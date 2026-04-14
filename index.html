@@ -86,8 +86,23 @@
             background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 100%; 
             image-rendering: pixelated; 
         }
-        #cropper-container { max-height: 450px; display: none; margin-top: 10px; border-radius: 8px; overflow: hidden; background: #f3f4f6; padding: 10px; border: 1px solid var(--border);}
-        .cropper-actions { display: flex; gap: 10px; margin-top: 10px; }
+        #cropper-container { 
+            display: none; 
+            margin-top: 15px; 
+            background: #f8fafc; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border);
+        }
+        .img-container { 
+            max-height: 400px; 
+            width: 100%; 
+        }
+        .img-container img {
+            display: block;
+            max-width: 100%;
+        }
+        .cropper-actions { display: flex; gap: 10px; margin-top: 15px; }
 
         @media (max-width: 768px) {
             .grid-2, .grid-3 { grid-template-columns: 1fr; }
@@ -147,14 +162,14 @@
                         
                         <!-- Vùng Cropper có xoay ảnh -->
                         <div id="cropper-container">
-                            <div style="max-height: 300px; overflow: hidden;">
-                                <img id="cropper-image" style="max-width: 100%;">
+                            <div class="img-container">
+                                <img id="cropper-image" alt="Ảnh tải lên">
                             </div>
                             <div class="cropper-actions">
                                 <button id="btn-rotate-left" class="btn btn-outline" style="flex: 1;">↺ Xoay Trái</button>
                                 <button id="btn-rotate-right" class="btn btn-outline" style="flex: 1;">↻ Xoay Phải</button>
                             </div>
-                            <button id="btn-crop" class="btn btn-success" style="width: 100%; margin-top: 10px;">✅ Xác Nhận Cắt & Chuyển Sang Preview</button>
+                            <button id="btn-crop" class="btn btn-success" style="width: 100%; margin-top: 15px;">✅ Xác Nhận Cắt & Xem Trước</button>
                         </div>
                     </div>
 
@@ -285,15 +300,18 @@
                 const file = e.target.files[0];
                 if (file) {
                     const url = URL.createObjectURL(file);
-                    document.getElementById('cropper-image').src = url;
-                    document.getElementById('cropper-container').style.display = 'block';
+                    const imgElement = document.getElementById('cropper-image');
                     
-                    if (cropper) cropper.destroy();
-                    cropper = new Cropper(document.getElementById('cropper-image'), {
-                        aspectRatio: R4(epdConfig.w / epdConfig.h),
-                        viewMode: 1, 
-                        autoCropArea: 1,
-                    });
+                    imgElement.onload = () => {
+                        if (cropper) cropper.destroy();
+                        cropper = new Cropper(imgElement, {
+                            aspectRatio: R4(epdConfig.w / epdConfig.h),
+                            viewMode: 1, 
+                            autoCropArea: 1,
+                        });
+                    };
+                    imgElement.src = url;
+                    document.getElementById('cropper-container').style.display = 'block';
                 }
             });
 
