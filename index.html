@@ -497,24 +497,9 @@
             const imgData = ctxP.getImageData(0, 0, w, h).data;
             const arr = [];
             
-            if (w === 256 && h === 128) {
-                // Quét dọc cho Mặc định cũ (256x128)
-                for (let x = 0; x < w; x++) {
-                    for (let y = 0; y < h; y += 8) {
-                        let byte = 0;
-                        for (let bit = 0; bit < 8; bit++) {
-                            if (y + bit < h) {
-                                const cIdx = ((y + bit) * w + x) * 4;
-                                let isWhite = (imgData[cIdx] > 128) ? 1 : 0;
-                                if(mode !== 'bw') isWhite = (imgData[cIdx] > 128 && imgData[cIdx+1] < 128) ? 1 : 0;
-                                byte |= (isWhite << (7 - bit));
-                            }
-                        }
-                        arr.push(byte);
-                    }
-                }
-            } else if (w === 250 || w === 212 || w === 296) {
-                // Quét từ phải sang trái, trên xuống dưới (2.13", 2.9")
+            // Xử lý quét: TUYỆT ĐỐI TUÂN THỦ "CONG CU WEB" ĐỂ TRÁNH LỖI SỌC
+            if (w === 250 || w === 212 || w === 296) {
+                // Quét cột từ phải sang trái, trong cột quét từ trên xuống dưới
                 let buffer = [];
                 for (let x = w - 1; x >= 0; x--) {
                     for (let y = 0; y < h; y++) {
@@ -533,7 +518,7 @@
                     arr.push(parseInt(buffer.join(''), 2));
                 }
             } else {
-                // Quét ngang chuẩn (4.2", 7.5")
+                // Màn chuẩn quét hàng từ trên xuống, trái sang phải
                 let buffer = [];
                 for (let y = 0; y < h; y++) {
                     for (let x = 0; x < w; x++) {
@@ -623,28 +608,19 @@
                 log(`Bắt đầu truyền ảnh (BW)...`);
                 document.getElementById('btn-upload-eink').disabled = true;
                 
-                const isLegacy256 = (w === 256 && h === 128);
+                // Đồng bộ chính xác Header gửi đi
                 let cod = (dataArr.length === 3500 || dataArr.length === 9000) ? 0x04 : 0x03;
                 let offset = 0;
                 
                 while(offset < dataArr.length) {
                     const chunk = Math.min(240, dataArr.length - offset);
-                    let packet;
+                    let packet = new Uint8Array(4 + chunk);
                     
-                    if (isLegacy256) {
-                        packet = new Uint8Array(3 + chunk);
-                        packet[0] = cod; 
-                        packet[1] = (offset >> 8) & 0xFF; 
-                        packet[2] = offset & 0xFF;
-                        for(let i=0; i<chunk; i++) packet[3+i] = dataArr[offset+i];
-                    } else {
-                        packet = new Uint8Array(4 + chunk);
-                        packet[0] = cod; 
-                        packet[1] = 0xFF; // BW map = FF
-                        packet[2] = ((offset) >> 8) & 0xFF; 
-                        packet[3] = (offset) & 0xFF;
-                        for(let i=0; i<chunk; i++) packet[4+i] = dataArr[offset+i];
-                    }
+                    packet[0] = cod; 
+                    packet[1] = 0xFF; // BW map = FF
+                    packet[2] = ((offset) >> 8) & 0xFF; 
+                    packet[3] = (offset) & 0xFF;
+                    for(let i=0; i<chunk; i++) packet[4+i] = dataArr[offset+i];
                     
                     await daChar.writeValue(packet);
                     offset += chunk;
@@ -652,13 +628,14 @@
                     await new Promise(r => setTimeout(r, 20));
                 }
 
-                if (modeStr.startsWith('bwr') && !isLegacy256) {
+                if (modeStr.startsWith('bwr') && w !== 250 && w !== 212) {
                     const redArr = canvasToBytes('bwr');
                     log(`Bắt đầu truyền map Đỏ...`);
                     offset = 0;
                     while(offset < redArr.length) {
                         const chunk = Math.min(240, redArr.length - offset);
-                        const packet = new Uint8Array(4 + chunk);
+                        let packet = new Uint8Array(4 + chunk);
+                        
                         packet[0] = cod; 
                         packet[1] = 0x00; // Red map = 00
                         packet[2] = ((offset) >> 8) & 0xFF; 
@@ -672,8 +649,14 @@
                 }
                 
                 log('Truyền xong. Ra lệnh hiển thị...');
-                await daSendCmd(0x01);
-                await daSendCmd(0x04); // Lưu Flash
+                if (w === 280 || h === 180) {
+                    await daSendCmd(0xAA);
+                } else {
+                    await daSendCmd(0x01);
+                }
+                
+                // Cố ý không gửi lệnh 0x04 ở đây để tránh lỗi ghi đè RAM trong lúc Refresh
+                
                 log('HOÀN TẤT!');
             } catch(e) { log('Lỗi: ' + e); } finally { document.getElementById('btn-upload-eink').disabled = false; }
         };
