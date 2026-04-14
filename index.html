@@ -56,6 +56,7 @@
         
         /* Bố cục Grid */
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .flex-row { display: flex; gap: 20px; flex-wrap: wrap; }
         .flex-col { flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 10px; }
         
@@ -104,7 +105,7 @@
         .cropper-actions { display: flex; gap: 10px; margin-top: 15px; }
 
         @media (max-width: 768px) {
-            .grid-2 { grid-template-columns: 1fr; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -132,7 +133,13 @@
                 <div class="card-title">⚡ Mạch ESP32-C3 (Custom)</div>
                 <div class="form-group">
                     <button id="btn-esp-connect" class="btn" style="background: #0d9488;">Kết Nối ESP32-C3</button>
-                    <button id="btn-esp-sync" class="btn btn-success" disabled>Gửi Giờ Cho ESP32</button>
+                </div>
+                <div class="form-group mt-2">
+                    <label>Mã Lệnh Kèm Theo (Prefix):</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="esp-custom-code" class="form-control" placeholder="VD: SYNC_TIME:" value="SYNC_TIME:">
+                        <button id="btn-esp-sync" class="btn btn-success" disabled style="white-space: nowrap;">Gửi Giờ</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -757,8 +764,9 @@
         
         document.getElementById('btn-esp-sync').onclick = async () => {
             if (!espChar) return;
+            const prefix = document.getElementById('esp-custom-code').value || '';
             const now = new Date();
-            const timeStr = `${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
+            const timeStr = `${prefix}${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
             await espChar.writeValue(new TextEncoder().encode(timeStr));
             log(`✅ Gửi ESP32: ${timeStr}`);
         };
