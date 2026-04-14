@@ -3,487 +3,637 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DA14585 Đồng bộ Bluetooth</title>
-    <!-- Thêm thư viện Cropper.js để cắt ảnh -->
+    <title>BMO E-ink Controller</title>
+    
+    <!-- Thư viện hỗ trợ Cropper & QR -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
+    
     <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: #333; padding: 20px 0; }
-        .container { max-width: 800px; margin: 0 auto; padding: 0 20px; }
-        h1 { margin-bottom: 20px; font-size: 2rem; color: white; text-align: center; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
-        .card { background: white; border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); padding: 24px; margin: 20px 0; }
-        .device-control { text-align: center; }
-        .image-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0; }
-        .setting-group { display: flex; flex-direction: column; align-items: flex-start; }
-        .setting-group label { font-weight: 600; margin-bottom: 8px; color: #555; }
-        .setting-group select, .setting-group input[type="range"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-        .setting-group input[type="range"] { padding: 0; }
-        .file-input { display: flex; flex-direction: column; align-items: center; margin: 20px 0; }
-        input[type="file"] { width: 100%; max-width: 300px; font-size: 14px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; transition: all 0.3s; }
-        input[type="file"]:hover { background: #f0f0f0; }
-        .buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 20px 0; }
-        button { padding: 12px 20px; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; background: #0078d7; color: white; box-shadow: 0 2px 8px rgba(0, 120, 215, 0.3); transition: all 0.3s; cursor: pointer; }
-        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 120, 215, 0.4); }
-        button:disabled { background: #bbb; color: #eee; box-shadow: none; cursor: not-allowed; }
-        #status { background: #2d3748; color: #48bb78; font-size: 12px; font-family: monospace; border-radius: 8px; padding: 16px; min-height: 120px; text-align: left; overflow-y: auto; margin: 20px 0; }
-        #progress { width: 100%; height: 8px; background-color: #e2e8f0; border-radius: 4px; margin: 20px 0; overflow: hidden; }
-        #progress-bar { height: 100%; background: linear-gradient(90deg, #4299e1, #48bb78); width: 0%; transition: width 0.3s ease; }
-        .code-editor { margin: 20px 0; }
-        .code-editor h3 { margin: 0 0 12px 0; color: #333; font-size: 16px; font-weight: 600; }
-        textarea { width: 100%; height: 150px; padding: 12px; font-size: 12px; font-family: monospace; border: 1px solid #ddd; border-radius: 8px; resize: vertical; background: #fafafa; transition: all 0.3s; }
-        textarea:focus { outline: none; border-color: #0078d7; background: white; box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.1); }
-        button.generate-btn { background: #48bb78; }
-        button.upload-btn { background: #ed8936; }
-        button.control-btn { background: #667eea; }
-        .cropper-container { max-height: 400px; }
-        @media (max-width: 600px) { .container { padding: 10px; } .buttons { grid-template-columns: 1fr; } .image-settings { grid-template-columns: 1fr; } }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); 
+            min-height: 100vh; 
+            color: var(--text); 
+            padding: 20px 10px; 
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        
+        h1 { font-size: 2.2rem; color: var(--primary); text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        
+        .card { 
+            background: var(--card); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+            padding: 20px; border: 1px solid var(--border);
+        }
+        
+        .card-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+
+        /* Nút bấm */
+        .btn { 
+            padding: 10px 15px; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; 
+            background: var(--primary); color: white; cursor: pointer; transition: all 0.2s; 
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+        .btn-success { background: #10b981; } .btn-success:hover:not(:disabled) { background: #059669; }
+        .btn-danger { background: #ef4444; } .btn-danger:hover:not(:disabled) { background: #dc2626; }
+        .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .btn-outline:hover:not(:disabled) { background: #f3f4f6; }
+        
+        /* Bố cục Grid */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .flex-row { display: flex; gap: 20px; flex-wrap: wrap; }
+        .flex-col { flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 10px; }
+        
+        /* Form & Input */
+        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+        .form-group label { font-weight: 500; font-size: 13px; color: #4b5563; }
+        .form-control { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; width: 100%; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
+        input[type="range"] { accent-color: var(--primary); }
+        
+        /* Trạng thái */
+        #status-console { 
+            background: #1f2937; color: #10b981; font-family: monospace; font-size: 13px; 
+            padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; white-space: pre-wrap;
+        }
+        
+        /* Thanh tiến trình */
+        .progress-container { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+        .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+
+        /* Canvas & Cropper */
+        .preview-box { 
+            background: #f9fafb; border: 2px dashed #cbd5e1; border-radius: 8px; 
+            padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        }
+        #preview-canvas { 
+            background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 100%; 
+            image-rendering: pixelated; 
+        }
+        #cropper-container { max-height: 400px; display: none; margin-top: 10px; border-radius: 8px; overflow: hidden; }
+
+        @media (max-width: 768px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>BMO e ink by Phuc</h1>
+        <h1>BMO E-ink Controller</h1>
 
-        <!-- Thẻ chọn chế độ -->
-        <div class="card">
-            <h2 style="margin-bottom: 20px; color: #4a5568;">Chọn Chế Độ</h2>
-            <div style="margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
-                <h3 style="margin: 0 0 8px 0; color: #4a5568; font-size: 14px; font-weight: 600;">Thời Gian Hiện Tại</h3>
-                <div id="currentTime" style="font-size: 18px; font-weight: 600; color: #2d3748;">Đang cập nhật...</div>
+        <!-- 1. KHU VỰC KẾT NỐI BLUETOOTH -->
+        <div class="card grid-2">
+            <div>
+                <div class="card-title">📡 Mạch DA14585 (Gốc)</div>
+                <div class="form-group">
+                    <button id="btn-da-connect" class="btn">Kết Nối DA14585</button>
+                    <button id="btn-da-sync" class="btn btn-success" disabled>Đồng Bộ Giờ</button>
+                    <div class="grid-2 mt-2">
+                        <button id="btn-da-img" class="btn btn-outline" disabled>Chế Độ Ảnh</button>
+                        <button id="btn-da-time" class="btn btn-outline" disabled>Chế Độ Giờ</button>
+                        <button id="btn-da-cal" class="btn btn-outline" disabled>Chế Độ Lịch</button>
+                        <button id="btn-disconnect" class="btn btn-danger" disabled>Ngắt Kết Nối</button>
+                    </div>
+                </div>
             </div>
-            <div class="buttons">
-                <button id="connectBtn" class="control-btn">Kết Nối Thiết Bị</button>
-                <button id="disconnectBtn" disabled="" class="control-btn">Ngắt Kết Nối</button>
-                <button id="syncTimeBtn" disabled="" class="control-btn">1. Đồng Bộ Thời Gian</button>
-                <button id="imageModeBtn" disabled="" class="control-btn">Chế Độ Hình Ảnh</button>
-                <button id="timeModeBtn" disabled="" class="control-btn">Chế Độ Thời Gian</button>
-                <button id="calendarModeBtn" disabled="" class="control-btn">Chế Độ Lịch</button>
-            </div>
-        </div>
-
-        <!-- Thẻ điều khiển ESP32-C3 Custom -->
-        <div class="card">
-            <h2 style="margin-bottom: 20px; color: #0d9488;">⚙️ Điều Khiển ESP32-C3 (Custom)</h2>
-            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Kết nối riêng với mạch ESP32 để đồng bộ thời gian (Gửi chuỗi dữ liệu YYYY,MM,DD,HH,MM,SS).</p>
-            <div class="buttons">
-                <button id="connectEspBtn" class="control-btn" style="background-color: #0f766e;">Kết Nối ESP32-C3</button>
-                <button id="syncEspTimeBtn" disabled="" class="control-btn" style="background-color: #14b8a6;">Đồng Bộ Giờ Cho ESP32</button>
+            <div>
+                <div class="card-title">⚡ Mạch ESP32-C3 (Custom)</div>
+                <div class="form-group">
+                    <button id="btn-esp-connect" class="btn" style="background: #0d9488;">Kết Nối ESP32-C3</button>
+                    <button id="btn-esp-sync" class="btn btn-success" disabled>Gửi Giờ Cho ESP32</button>
+                </div>
             </div>
         </div>
 
-        <!-- Thẻ truyền & Cắt ảnh -->
+        <!-- 2. XỬ LÝ ẢNH & UPLOAD -->
         <div class="card">
-            <h2 style="margin-bottom: 20px; color: #4a5568;">Tải Lên & Cắt Ảnh</h2>
-            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Chọn ảnh từ máy, chỉnh sửa kích thước vừa khung hình và đưa vào mã Hex.</p>
-
-            <div class="file-input">
-                <input type="file" id="imageFile" accept="image/*">
-            </div>
-
-            <!-- Vùng cắt ảnh (Cropper) -->
-            <div id="cropperArea" style="display: none; margin-top: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; background: #fafafa;">
-                <h3 style="margin-bottom: 10px; font-size: 14px; color: #333; text-align:center;">Kéo & thu phóng để chọn vùng cắt (Tỷ lệ 256:128)</h3>
-                <div style="max-height: 400px; overflow: hidden; width: 100%;">
-                    <img id="cropperImage" style="max-width: 100%; display: block;">
-                </div>
-                <button id="cropBtn" class="control-btn" style="width: 100%; margin-top: 15px; background: #ea580c;">✂️ Cắt Ảnh & Tự Động Tạo Mã Hex</button>
-            </div>
-        </div>
-
-        <!-- Thẻ xử lý ảnh -->
-        <div class="card">
-            <h2 style="margin-bottom: 20px; color: #4a5568;">Điều Chỉnh Hiển Thị</h2>
-
-            <!-- Chức năng xem trước ảnh -->
-            <div style="margin: 20px 0; padding: 16px; background: #f8f9fa; border-radius: 8px;">
-                <h3 style="margin-bottom: 16px; color: #4a5568;">Xem Trước Kết Quả Trên E-ink</h3>
-                <div style="display: flex; justify-content: center; align-items: center;">
-                    <!-- Canvas giả lập hiển thị -->
-                    <canvas id="imagePreview" width="256" height="128" style="border: 2px solid #333; border-radius: 4px; background: white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); width: 100%; max-width: 512px; image-rendering: pixelated;"></canvas>
-                </div>
-            </div>
-
-            <div class="image-settings">
-                <div class="setting-group">
-                    <label for="dithering">Khử răng cưa (Dithering)</label>
-                    <select id="dithering">
-                        <option value="none">Không</option>
-                        <option value="ordered" selected>Dithering có trật tự</option>
-                        <option value="floyd-steinberg">Floyd-Steinberg</option>
-                    </select>
-                </div>
-                <div class="setting-group">
-                    <label for="ditherIntensity">Cường độ Dithering</label>
-                    <input type="range" id="ditherIntensity" min="0" max="2" step="0.1" value="1.0">
-                </div>
-                <div class="setting-group">
-                    <label for="brightness">Độ sáng</label>
-                    <input type="range" id="brightness" min="0" max="200" value="100">
-                </div>
-                <div class="setting-group">
-                    <label for="contrast">Độ tương phản</label>
-                    <input type="range" id="contrast" min="0" max="200" value="100">
-                </div>
-                <div class="setting-group">
-                    <label for="mtu">MTU (Kích thước gói)</label>
-                    <select id="mtu">
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="200">200</option>
-                        <option value="500">500</option>
-                    </select>
-                </div>
-                <div class="setting-group">
-                    <label for="confirmInterval">Độ trễ gửi lệnh (ms)</label>
-                    <input type="range" id="confirmInterval" min="0" max="100" value="20">
-                </div>
-            </div>
+            <div class="card-title">🖼️ Tải Lên & Chỉnh Sửa Ảnh</div>
             
-            <div id="progress">
-                <div id="progress-bar"></div>
+            <div class="flex-row">
+                <!-- Công cụ cắt và cài đặt -->
+                <div class="flex-col">
+                    <div class="form-group">
+                        <label>1. Kích thước màn hình</label>
+                        <select id="epd-size" class="form-control">
+                            <option value="250x144" selected>2.13" HD (250x144)</option>
+                            <option value="212x104">2.13" (212x104)</option>
+                            <option value="256x128">Mặc định cũ (256x128)</option>
+                            <option value="296x128">2.9" (296x128)</option>
+                            <option value="400x300">4.2" (400x300)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>2. Tải ảnh lên</label>
+                        <input type="file" id="image-upload" class="form-control" accept="image/*">
+                        <div id="cropper-container">
+                            <img id="cropper-image" style="max-width: 100%;">
+                            <button id="btn-crop" class="btn btn-success" style="width: 100%; margin-top: 10px;">✂️ Cắt & Tự Động Dán Sang Preview</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hoặc tạo QR Code</label>
+                        <div style="display: flex; gap: 5px;">
+                            <input type="text" id="qr-input" class="form-control" placeholder="Nhập link hoặc văn bản...">
+                            <button id="btn-add-qr" class="btn">Tạo QR</button>
+                        </div>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 10px 0;">
+
+                    <div class="form-group">
+                        <label>Thuật toán Khử Răng Cưa (Dithering)</label>
+                        <select id="epd-dither" class="form-control">
+                            <option value="floydsteinberg" selected>Đen Trắng - Floyd-Steinberg</option>
+                            <option value="atkinson">Đen Trắng - Atkinson</option>
+                            <option value="bayer">Đen Trắng - Bayer</option>
+                            <option value="stucki">Đen Trắng - Stucki</option>
+                            <option value="jarvis">Đen Trắng - Jarvis</option>
+                            <option value="none">Đen Trắng - Không khử (Threshold)</option>
+                            <option value="bwr_floydsteinberg">Đỏ/Đen/Trắng - Floyd-Steinberg</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ngưỡng Đen Trắng: <span id="val-thresh">128</span></label>
+                        <input type="range" id="adj-thresh" min="10" max="255" value="128">
+                    </div>
+                    <div class="form-group">
+                        <label>Độ sáng: <span id="val-bright">0</span></label>
+                        <input type="range" id="adj-bright" min="-100" max="100" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Độ tương phản: <span id="val-contrast">100</span></label>
+                        <input type="range" id="adj-contrast" min="0" max="200" value="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Cường độ Dithering: <span id="val-diffusion">50</span></label>
+                        <input type="range" id="diffusion" min="0" max="100" value="50">
+                    </div>
+                </div>
+
+                <!-- Preview & Upload -->
+                <div class="flex-col">
+                    <label style="font-weight: 500; font-size: 13px; color: #4b5563;">Kết Quả Sau Khi Xử Lý</label>
+                    <div class="preview-box">
+                        <canvas id="preview-canvas" width="250" height="144"></canvas>
+                        
+                        <button id="btn-upload-eink" class="btn btn-success" style="width: 100%; margin-top: 20px; font-size: 16px; padding: 15px;" disabled>
+                            🚀 BẮN ẢNH SANG E-INK
+                        </button>
+                        
+                        <div class="progress-container">
+                            <div id="upload-progress" class="progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Thẻ chỉnh sửa code -->
-        <div class="card">
-            <h2 style="margin-bottom: 20px; color: #4a5568;">Chỉnh Sửa Mã Hình Ảnh</h2>
-            <div class="code-editor">
-                <h3>Mã Hình Ảnh Hex (Để lưu vào bộ nhớ / ESP32)</h3>
-                <textarea id="imageCode" placeholder="Mã hình ảnh Hex sẽ hiển thị tại đây..."></textarea>
+        <!-- 3. CONSOLE & HEX -->
+        <div class="card grid-2">
+            <div>
+                <div class="card-title">📝 Console Log</div>
+                <div id="status-console">Sẵn sàng...</div>
             </div>
-            <div class="buttons">
-                <button id="uploadCodeBtn" disabled="" class="upload-btn" style="width:100%;">TẢI ẢNH LÊN MÀN HÌNH E-INK 🚀</button>
+            <div>
+                <div class="card-title">⚙️ Mã Hex Thô (Dev)</div>
+                <textarea id="hex-output" class="form-control" style="height: 110px; font-family: monospace; font-size: 11px;" readonly placeholder="Mã Hex sẽ hiện ở đây..."></textarea>
+                <button id="btn-generate-hex" class="btn btn-outline" style="width: 100%; margin-top: 10px;">Tạo Mã Hex</button>
             </div>
-        </div>
-
-        <!-- Thẻ hiển thị trạng thái -->
-        <div class="card">
-            <h2 style="margin-bottom: 20px; color: #4a5568;">Trạng Thái Thiết Bị</h2>
-            <div id="status">Đang chờ kết nối...</div>
         </div>
     </div>
 
+    <!-- MAIN SCRIPT -->
     <script>
-        // DOM element
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const uploadCodeBtn = document.getElementById('uploadCodeBtn');
-        const imageFile = document.getElementById('imageFile');
-        const status = document.getElementById('status');
-        const progressBar = document.getElementById('progress-bar');
-        const imageCode = document.getElementById('imageCode');
-        const imagePreview = document.getElementById('imagePreview');
-
-        // Nút chế độ
-        const syncTimeBtn = document.getElementById('syncTimeBtn');
-        const imageModeBtn = document.getElementById('imageModeBtn');
-        const timeModeBtn = document.getElementById('timeModeBtn');
-        const calendarModeBtn = document.getElementById('calendarModeBtn');
-
-        // ESP32 DOM Elements
-        const connectEspBtn = document.getElementById('connectEspBtn');
-        const syncEspTimeBtn = document.getElementById('syncEspTimeBtn');
-        const ESP32_SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-        const ESP32_CHAR_UUID = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
-        let espDevice, espCharacteristic;
-
-        // Cài đặt hình ảnh
-        const brightness = document.getElementById('brightness');
-        const contrast = document.getElementById('contrast');
-        const dithering = document.getElementById('dithering');
-        const ditherIntensity = document.getElementById('ditherIntensity');
-        const mtu = document.getElementById('mtu');
-        const confirmInterval = document.getElementById('confirmInterval');
-
-        let imageParams = { brightness: 100, contrast: 100, dithering: 'ordered', ditherIntensity: 1.0, mtu: 50, confirmInterval: 20 };
-
-        // Canvas giữ ảnh gốc chưa qua xử lý màu/dither
-        let currentSourceCanvas = document.createElement('canvas');
-        currentSourceCanvas.width = 256; currentSourceCanvas.height = 128;
-
-        // Cập nhật giờ hiện tại trên web
-        function updateCurrentTime () {
-            const now = new Date();
-            document.getElementById('currentTime').textContent = 
-                `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ` +
-                `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-        }
-        updateCurrentTime(); setInterval(updateCurrentTime, 1000);
-
-        // Hàm tiện ích in Status
-        const updateStatus = msg => {
-            status.textContent += msg + '\n';
-            status.scrollTop = status.scrollHeight;
-        };
-        function updateProgress (percent) { progressBar.style.width = percent + '%'; }
-
-        // --- HỆ THỐNG XỬ LÝ ẢNH MỚI (Từ Canvas Nguồn -> Canvas Hiển Thị -> Hex) ---
-        function renderToPreviewAndCode() {
-            const srcCtx = currentSourceCanvas.getContext('2d');
-            const srcImageData = srcCtx.getImageData(0, 0, 256, 128);
-            const data = new Uint8Array(srcImageData.data);
-
-            const bFactor = imageParams.brightness / 100;
-            const cFactor = imageParams.contrast / 100;
-
-            // Chỉnh sáng / tương phản
-            for (let i = 0; i < data.length; i += 4) {
-                let r = data[i]; let g = data[i + 1]; let b = data[i + 2];
-                r = Math.round((r - 128) * cFactor + 128) * bFactor;
-                g = Math.round((g - 128) * cFactor + 128) * bFactor;
-                b = Math.round((b - 128) * cFactor + 128) * bFactor;
-                data[i] = Math.max(0, Math.min(255, r));
-                data[i + 1] = Math.max(0, Math.min(255, g));
-                data[i + 2] = Math.max(0, Math.min(255, b));
-            }
-
-            const adjustedImageData = new ImageData(new Uint8ClampedArray(data), 256, 128);
-            const ditheredImageData = applyDithering(adjustedImageData, imageParams.dithering, imageParams.ditherIntensity);
-
-            // Cập nhật khung xem trước
-            const ctx = imagePreview.getContext('2d');
-            ctx.putImageData(ditheredImageData, 0, 0);
-
-            // Tạo mã EPD
-            const epdData = convertImageToEPDDataDirect(ditheredImageData);
-            imageCode.value = imageDataToString(epdData);
-            uploadCodeBtn.disabled = false;
+        /**
+         * QUY TẮC LÀM TRÒN BẮT BUỘC: LUÔN LÀM TRÒN ĐẾN 4 CHỮ SỐ THẬP PHÂN
+         */
+        function R4(val) {
+            return Math.round(val * 10000) / 10000;
         }
 
-        // Theo dõi thay đổi thanh trượt
-        brightness.addEventListener('input', (e) => { imageParams.brightness = parseInt(e.target.value); renderToPreviewAndCode(); });
-        contrast.addEventListener('input', (e) => { imageParams.contrast = parseInt(e.target.value); renderToPreviewAndCode(); });
-        dithering.addEventListener('change', (e) => { imageParams.dithering = e.target.value; renderToPreviewAndCode(); });
-        ditherIntensity.addEventListener('input', (e) => { imageParams.ditherIntensity = parseFloat(e.target.value); renderToPreviewAndCode(); });
-        mtu.addEventListener('change', (e) => { imageParams.mtu = parseInt(e.target.value); });
-        confirmInterval.addEventListener('input', (e) => { imageParams.confirmInterval = parseInt(e.target.value); });
-
-        // --- CHỨC NĂNG CẮT ẢNH (CROPPER.JS) ---
-        let cropper = null;
-        imageFile.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                document.getElementById('cropperImage').src = url;
-                document.getElementById('cropperArea').style.display = 'block';
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(document.getElementById('cropperImage'), {
-                    aspectRatio: 256 / 128, // Fix tỷ lệ màn hình 2:1
-                    viewMode: 1,
-                    autoCropArea: 1,
-                });
-            }
-        });
-
-        document.getElementById('cropBtn').addEventListener('click', () => {
-            if (!cropper) return;
-            const croppedCanvas = cropper.getCroppedCanvas({ width: 256, height: 128 });
-            
-            // Vẽ ảnh đã cắt vào Canvas Nguồn
-            const ctx = currentSourceCanvas.getContext('2d');
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, 256, 128);
-            ctx.drawImage(croppedCanvas, 0, 0, 256, 128);
-            
-            renderToPreviewAndCode();
-            updateStatus('✂️ Đã cắt ảnh thành công. Hãy tinh chỉnh độ sáng/tương phản hoặc nhấn TẢI LÊN!');
-            document.getElementById('cropperArea').style.display = 'none'; // Ẩn khung crop cho gọn
-        });
-
-        // Lệnh cấu trúc BLE
-        const CMD_CLEAR_DISPLAY = 0x00; const CMD_DISPLAY_IMAGE = 0x01; const CMD_WRITE_DATA = 0x03;
-        const CMD_SAVE_IMAGE = 0x04; const CMD_SET_IMAGE_SIZE = 0x06;
-        let device, server, service, characteristic;
-        const SERVICE_2_UUID = '00001f10-0000-1000-8000-00805f9b34fb';
-        const CHARACTERISTIC_2_UUID = '00001f1f-0000-1000-8000-00805f9b34fb';
-
-        async function sendCommand (command, data = []) {
-            if (!characteristic) { updateStatus('Lỗi: Chưa kết nối thiết bị!'); return false; }
-            try {
-                const buffer = new Uint8Array([command, ...data]);
-                updateStatus('Gửi lệnh: ' + Array.from(buffer).map(b => '0x' + b.toString(16).padStart(2, '0').toUpperCase()).join(' '));
-                await characteristic.writeValue(buffer);
-                return true;
-            } catch (error) { updateStatus('Gửi lệnh thất bại: ' + error); return false; }
-        }
-
-        // --- ĐIỀU KHIỂN & ĐỒNG BỘ DA14585 ---
-        connectBtn.onclick = async () => {
-            try {
-                status.textContent = ''; updateStatus('Đang tìm thiết bị Bluetooth (Có chữ DLG-)...');
-                device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "DLG-" }], optionalServices: [SERVICE_2_UUID] });
-                updateStatus('Đã tìm thấy: ' + device.name);
-                server = await device.gatt.connect();
-                service = await server.getPrimaryService(SERVICE_2_UUID);
-                characteristic = await service.getCharacteristic(CHARACTERISTIC_2_UUID);
-                updateStatus('✅ KẾT NỐI THÀNH CÔNG!');
-                
-                device.addEventListener('gattserverdisconnected', disconnectBtn.onclick);
-                
-                connectBtn.disabled = true; disconnectBtn.disabled = false; syncTimeBtn.disabled = false;
-                imageModeBtn.disabled = false; timeModeBtn.disabled = false; calendarModeBtn.disabled = false;
-            } catch (e) { updateStatus('❌ Lỗi kết nối: ' + e); }
-        };
-
-        disconnectBtn.onclick = async () => {
-            if (device && device.gatt.connected) device.gatt.disconnect();
-            connectBtn.disabled = false; disconnectBtn.disabled = true; syncTimeBtn.disabled = true;
-            imageModeBtn.disabled = true; timeModeBtn.disabled = true; calendarModeBtn.disabled = true;
-            updateStatus('Đã ngắt kết nối thiết bị.');
-        };
-
-        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+        // ================= CẤU HÌNH & DOM =================
+        let epdConfig = { w: 250, h: 144 };
         
-        syncTimeBtn.onclick = async () => {
-            if (!characteristic) return;
-            try {
-                const now = Math.floor(Date.now() / 1000);
-                // BẢN VÁ LỖI TRỄ 1H: Firmware gốc của máy định tuyến theo UTC+8 (Múi giờ Bắc Kinh). 
-                // Cần +8 tiếng để sau khi trừ lùi của nó sẽ hiển thị chuẩn giờ Việt Nam.
-                const nowWithCorrectOffset = now + 8 * 3600; 
-                
-                const buffer = new Uint8Array(5);
-                buffer[0] = 0xDD;
-                buffer[1] = (nowWithCorrectOffset >> 24) & 0xFF; buffer[2] = (nowWithCorrectOffset >> 16) & 0xFF;
-                buffer[3] = (nowWithCorrectOffset >> 8) & 0xFF; buffer[4] = nowWithCorrectOffset & 0xFF;
-                
-                await characteristic.writeValue(buffer);
-                updateStatus('✅ Đã gửi gói đồng bộ thời gian (UTC+8 bù trừ firmware).');
-                await delay(200); await sendCommand(0xE2); updateStatus('✅ Đã làm mới đồng hồ!');
-            } catch (e) { updateStatus('Lỗi đồng bộ: ' + e); }
-        };
+        const canvasPreview = document.getElementById('preview-canvas');
+        const ctxP = canvasPreview.getContext('2d');
+        const canvasSource = document.createElement('canvas'); 
+        canvasSource.width = 250; canvasSource.height = 144;
+        const ctxS = canvasSource.getContext('2d');
 
-        imageModeBtn.onclick = async () => { if(!characteristic) return; await sendCommand(0xE1, [0]); await delay(200); await sendCommand(0xE2); updateStatus('Đã chuyển sang HÌNH ẢNH'); };
-        timeModeBtn.onclick = async () => { if(!characteristic) return; await sendCommand(0xE1, [2]); await delay(200); await sendCommand(0xE2); updateStatus('Đã chuyển sang THỜI GIAN'); };
-        calendarModeBtn.onclick = async () => { if(!characteristic) return; await sendCommand(0xE1, [1]); await delay(200); await sendCommand(0xE2); updateStatus('Đã chuyển sang LỊCH'); };
+        const consoleLog = document.getElementById('status-console');
+        const hexOutput = document.getElementById('hex-output');
+        const uploadProgress = document.getElementById('upload-progress');
 
-        uploadCodeBtn.onclick = async () => {
-            if (!characteristic) { updateStatus('Chưa kết nối!'); return; }
-            const codeStr = imageCode.value;
-            if (!codeStr.trim()) { updateStatus('Mã trống!'); return; }
-            try {
-                const epdData = stringToImageData(codeStr);
-                updateProgress(0);
-                await sendCommand(CMD_SET_IMAGE_SIZE, [ (epdData.length >> 24) & 0xFF, (epdData.length >> 16) & 0xFF, (epdData.length >> 8) & 0xFF, epdData.length & 0xFF ]);
-                let offset = 0;
-                while (offset < epdData.length) {
-                    const chunkSize = Math.min(imageParams.mtu - 3, epdData.length - offset);
-                    const chunk = epdData.slice(offset, offset + chunkSize);
-                    const packet = new Uint8Array(3 + chunkSize);
-                    packet[0] = CMD_WRITE_DATA; packet[1] = (offset >> 8) & 0xFF; packet[2] = offset & 0xFF;
-                    packet.set(chunk, 3);
-                    await characteristic.writeValue(packet);
-                    offset += chunkSize;
-                    updateProgress(Math.round((offset / epdData.length) * 100));
-                    await new Promise(r => setTimeout(r, imageParams.confirmInterval));
+        let cropper = null;
+
+        // Tiện ích Log
+        function log(msg) {
+            consoleLog.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // ================= KHỞI TẠO & LẮNG NGHE SỰ KIỆN =================
+        function initEvents() {
+            // Thay đổi kích thước E-ink
+            document.getElementById('epd-size').addEventListener('change', (e) => {
+                const [w, h] = e.target.value.split('x').map(Number);
+                epdConfig.w = w; epdConfig.h = h;
+                
+                canvasPreview.width = w; canvasPreview.height = h;
+                canvasSource.width = w; canvasSource.height = h;
+                
+                // Cập nhật tỷ lệ khung cắt (làm tròn R4)
+                if(cropper) cropper.setAspectRatio(R4(w / h));
+                
+                // Xoá trắng nền
+                ctxS.fillStyle = 'white';
+                ctxS.fillRect(0, 0, w, h);
+                processImage();
+            });
+
+            // Tải ảnh lên và khởi tạo Cropper
+            document.getElementById('image-upload').addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    document.getElementById('cropper-image').src = url;
+                    document.getElementById('cropper-container').style.display = 'block';
+                    
+                    if (cropper) cropper.destroy();
+                    cropper = new Cropper(document.getElementById('cropper-image'), {
+                        aspectRatio: R4(epdConfig.w / epdConfig.h),
+                        viewMode: 1, 
+                        autoCropArea: 1,
+                    });
                 }
-                updateStatus('Truyền ảnh xong. Đang hiển thị...');
-                await sendCommand(CMD_DISPLAY_IMAGE);
-                await sendCommand(CMD_SAVE_IMAGE);
-                updateStatus('HOÀN TẤT TẢI ẢNH!');
-            } catch (e) { updateStatus('Lỗi: ' + e); }
-        };
+            });
 
-        // --- ESP32 CUSTOM ---
-        connectEspBtn.onclick = async () => {
-            try {
-                espDevice = await navigator.bluetooth.requestDevice({ filters: [{ services: [ESP32_SERVICE_UUID] }] });
-                const server = await espDevice.gatt.connect();
-                const service = await server.getPrimaryService(ESP32_SERVICE_UUID);
-                espCharacteristic = await service.getCharacteristic(ESP32_CHAR_UUID);
-                updateStatus('✅ Đã kết nối ESP32-C3!');
-                connectEspBtn.disabled = true; connectEspBtn.innerText = 'Đã kết nối ESP32'; syncEspTimeBtn.disabled = false;
-                espDevice.addEventListener('gattserverdisconnected', () => {
-                    updateStatus('⚠️ ESP32 ngắt kết nối!');
-                    connectEspBtn.disabled = false; connectEspBtn.innerText = 'Kết Nối ESP32-C3'; syncEspTimeBtn.disabled = true;
+            // Nút cắt ảnh
+            document.getElementById('btn-crop').onclick = () => {
+                if(!cropper) return;
+                const cropped = cropper.getCroppedCanvas({ width: epdConfig.w, height: epdConfig.h });
+                
+                // Vẽ ảnh cắt vào Source Canvas
+                ctxS.fillStyle = 'white';
+                ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
+                ctxS.drawImage(cropped, 0, 0, epdConfig.w, epdConfig.h);
+                
+                document.getElementById('cropper-container').style.display = 'none';
+                cropper.destroy(); cropper = null;
+                document.getElementById('image-upload').value = '';
+                
+                log('✂️ Cắt ảnh thành công!');
+                processImage();
+            };
+
+            // Tạo QR Code
+            document.getElementById('btn-add-qr').onclick = () => {
+                const text = document.getElementById('qr-input').value;
+                if(!text) return alert("Vui lòng nhập nội dung QR!");
+                const qrDiv = document.createElement('div');
+                new QRCode(qrDiv, { text: text, width: epdConfig.h, height: epdConfig.h, colorDark: "#000", colorLight: "#fff", correctLevel: QRCode.CorrectLevel.L });
+                
+                setTimeout(() => {
+                    const canvas = qrDiv.querySelector('canvas');
+                    if(canvas) {
+                        ctxS.fillStyle = 'white';
+                        ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
+                        // Căn giữa QR
+                        const xOffset = R4((epdConfig.w - epdConfig.h) / 2);
+                        ctxS.drawImage(canvas, xOffset, 0, epdConfig.h, epdConfig.h);
+                        
+                        log('Tạo QR Code thành công!');
+                        processImage();
+                    }
+                }, 100);
+            };
+
+            // Cập nhật bộ lọc
+            ['thresh', 'bright', 'contrast'].forEach(id => {
+                const input = document.getElementById(`adj-${id}`);
+                input.addEventListener('input', e => {
+                    document.getElementById(`val-${id}`).textContent = e.target.value;
+                    processImage();
                 });
-            } catch (e) { updateStatus('Lỗi kết nối ESP32: ' + e); }
-        };
+            });
+            document.getElementById('diffusion').addEventListener('input', e => {
+                document.getElementById('val-diffusion').textContent = e.target.value;
+                processImage();
+            });
+            document.getElementById('epd-dither').addEventListener('change', processImage);
 
-        syncEspTimeBtn.onclick = async () => {
-            if (!espCharacteristic) return;
-            try {
-                const now = new Date();
-                const timeStr = `${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
-                await espCharacteristic.writeValue(new TextEncoder().encode(timeStr));
-                updateStatus(`✅ Đã gửi ESP32: [${timeStr}]`);
-            } catch (e) { updateStatus('Lỗi đồng bộ ESP32: ' + e); }
-        };
+            // Nút tạo Hex
+            document.getElementById('btn-generate-hex').onclick = generateHex;
+        }
 
-        // Các hàm xử lý Dithering
-        function applyDithering(imageData, ditherType, intensity) {
-            const width = imageData.width; const height = imageData.height;
-            const data = new Uint8Array(imageData.data); const output = new Uint8Array(data.length); output.set(data);
-            if (ditherType === 'none') return imageData;
+        // ================= XỬ LÝ ẢNH & DITHERING =================
+        function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
 
-            if (ditherType === 'floyd-steinberg') {
-                for (let y = 0; y < height; y++) {
-                    for (let x = 0; x < width; x++) {
-                        const index = (y * width + x) * 4;
-                        const oldGray = Math.round(0.299 * output[index] + 0.587 * output[index + 1] + 0.114 * output[index + 2]);
-                        const newGray = oldGray < 128 ? 0 : 255;
-                        const error = (oldGray - newGray) * intensity;
-                        output[index] = output[index + 1] = output[index + 2] = newGray;
-                        const spread = [ { x: 1, y: 0, f: 7/16 }, { x: -1, y: 1, f: 3/16 }, { x: 0, y: 1, f: 5/16 }, { x: 1, y: 1, f: 1/16 } ];
-                        for (const s of spread) {
-                            const nx = x + s.x, ny = y + s.y;
-                            if (nx >= 0 && nx < width && ny < height) {
-                                const nIdx = (ny * width + nx) * 4;
-                                output[nIdx] = output[nIdx+1] = output[nIdx+2] = Math.max(0, Math.min(255, output[nIdx] + error * s.f));
+        function processImage() {
+            const w = epdConfig.w; const h = epdConfig.h;
+            
+            // 1. Copy từ Source sang Preview
+            ctxP.drawImage(canvasSource, 0, 0);
+            const imgData = ctxP.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            
+            // 2. Chỉnh màu sắc (Áp dụng R4 cho toán học)
+            const bright = parseInt(document.getElementById('adj-bright').value);
+            const contrast = parseInt(document.getElementById('adj-contrast').value);
+            
+            const bF = R4(bright / 100);
+            const cF = R4(contrast / 100);
+            const cAdj = R4((1 - cF) * 128);
+
+            if(bright !== 0 || contrast !== 100) {
+                for (let i = 0; i < data.length; i += 4) {
+                    let r = data[i], g = data[i+1], b = data[i+2];
+                    if(contrast !== 100) {
+                        r = R4(r * cF + cAdj); g = R4(g * cF + cAdj); b = R4(b * cF + cAdj);
+                    }
+                    if(bright !== 0) {
+                        r = R4(r + 255 * bF); g = R4(g + 255 * bF); b = R4(b + 255 * bF);
+                    }
+                    data[i] = clamp(r, 0, 255); data[i+1] = clamp(g, 0, 255); data[i+2] = clamp(b, 0, 255);
+                }
+            }
+
+            // 3. Dithering
+            const mode = document.getElementById('epd-dither').value;
+            const thresh = parseInt(document.getElementById('adj-thresh').value);
+            const diff = R4(parseInt(document.getElementById('diffusion').value) / 100);
+
+            // Hàm phân phối lỗi
+            const addErr = (ix, err, f) => {
+                if(ix >= 0 && ix < data.length) {
+                    let v = R4(err * f);
+                    data[ix] = clamp(data[ix]+v,0,255); data[ix+1] = clamp(data[ix+1]+v,0,255); data[ix+2] = clamp(data[ix+2]+v,0,255);
+                }
+            };
+
+            if (mode === 'floydsteinberg' || mode === 'bwr_floydsteinberg') {
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y * w + x) * 4;
+                        const gray = R4(0.299*data[idx] + 0.587*data[idx+1] + 0.114*data[idx+2]);
+                        const newP = gray < thresh ? 0 : 255;
+                        const err = R4((gray - newP) * diff);
+                        
+                        if (mode === 'bwr_floydsteinberg' && data[idx] > data[idx+1]*1.5 && data[idx] > data[idx+2]*1.5 && data[idx] > thresh) {
+                            data[idx] = 255; data[idx+1] = 0; data[idx+2] = 0; // Đỏ
+                        } else {
+                            data[idx] = data[idx+1] = data[idx+2] = newP;
+                            if (x+1 < w) addErr(idx+4, err, R4(7/16));
+                            if (y+1 < h) {
+                                if (x-1 >= 0) addErr(idx+w*4-4, err, R4(3/16));
+                                addErr(idx+w*4, err, R4(5/16));
+                                if (x+1 < w) addErr(idx+w*4+4, err, R4(1/16));
                             }
                         }
                     }
                 }
-            } else if (ditherType === 'ordered') {
-                const matrix = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]];
-                for (let y = 0; y < height; y++) {
-                    for (let x = 0; x < width; x++) {
-                        const index = (y * width + x) * 4;
-                        const oldGray = Math.round(0.299 * output[index] + 0.587 * output[index + 1] + 0.114 * output[index + 2]);
-                        const threshold = (matrix[y % 4][x % 4] / 16) * 255 * intensity;
-                        output[index] = output[index + 1] = output[index + 2] = oldGray < threshold ? 0 : 255;
-                    }
-                }
-            }
-            return new ImageData(new Uint8ClampedArray(output), width, height);
-        }
-
-        function convertImageToEPDDataDirect(ditheredImageData) {
-            const epdData = new Uint8Array(4096); epdData.fill(0);
-            const data = ditheredImageData.data;
-            for (let x = 0; x < 256; x++) {
-                for (let y = 0; y < 128; y += 8) {
-                    let byte = 0;
-                    for (let bit = 0; bit < 8; bit++) {
-                        if (y + bit < 128) {
-                            const index = ((y + bit) * 256 + x) * 4;
-                            const epdPixel = data[index] < 128 ? 0 : 1;
-                            byte |= (epdPixel << (7 - bit));
+            } else if (mode === 'atkinson') {
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y * w + x) * 4;
+                        const gray = R4(0.299*data[idx] + 0.587*data[idx+1] + 0.114*data[idx+2]);
+                        const newP = gray < thresh ? 0 : 255;
+                        const err = R4((gray - newP) * diff);
+                        data[idx] = data[idx+1] = data[idx+2] = newP;
+                        
+                        if (x+1 < w) addErr(idx+4, err, R4(1/8));
+                        if (x+2 < w) addErr(idx+8, err, R4(1/8));
+                        if (y+1 < h) {
+                            if (x-1 >= 0) addErr(idx+w*4-4, err, R4(1/8));
+                            addErr(idx+w*4, err, R4(1/8));
+                            if (x+1 < w) addErr(idx+w*4+4, err, R4(1/8));
                         }
+                        if (y+2 < h) addErr(idx+w*8, err, R4(1/8));
                     }
-                    epdData[x * 16 + (y / 8)] = byte;
+                }
+            } else if (mode === 'bayer') {
+                const bayerMap = [[15, 135, 45, 165],[195, 75, 225, 105],[60, 180, 30, 150],[240, 120, 210, 90]];
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = R4(0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]);
+                    const x = (i / 4) % w;
+                    const y = Math.floor((i / 4) / w);
+                    const mapVal = bayerMap[x % 4][y % 4];
+                    const adjThresh = R4(thresh * (1 + (mapVal - 128) / 128 * diff));
+                    const fThresh = clamp(adjThresh, 0, 255);
+                    const v = gray < fThresh ? 0 : 255;
+                    data[i] = data[i+1] = data[i+2] = v;
+                }
+            } else {
+                // Fallback (None, Stucki giản lược...)
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = R4(0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]);
+                    const v = gray < thresh ? 0 : 255;
+                    data[i] = data[i+1] = data[i+2] = v;
                 }
             }
-            return epdData;
+            
+            ctxP.putImageData(imgData, 0, 0);
+            document.getElementById('btn-upload-eink').disabled = false;
         }
 
-        function imageDataToString(epdData) {
-            let str = '';
-            for (let i = 0; i < epdData.length; i++) {
-                str += '0x' + epdData[i].toString(16).padStart(2, '0').toUpperCase();
-                str += (i < epdData.length - 1) ? (((i + 1) % 16 === 0) ? ',\n' : ', ') : '';
+        // ================= XUẤT HEX & TRUYỀN BLUETOOTH =================
+        function canvasToBytes(mode = 'bw') {
+            const w = epdConfig.w; const h = epdConfig.h;
+            const imgData = ctxP.getImageData(0, 0, w, h).data;
+            const arr = new Uint8Array(Math.ceil((w * h) / 8));
+            let idx = 0; let buf = 0; let bitC = 0;
+            
+            // Xử lý quét: Màn 2.13" và 2.9" thường quét từ phải sang trái
+            if (w === 250 || w === 212 || w === 296) {
+                for (let x = w - 1; x >= 0; x--) {
+                    for (let y = 0; y < h; y++) {
+                        const cIdx = (w * 4 * y) + x * 4;
+                        let bit = 0;
+                        if(mode === 'bw') {
+                            bit = (imgData[cIdx] < 128) ? 0 : 1; // 1=White, 0=Black
+                        } else {
+                            // BWR mode: Lọc điểm màu đỏ (R=255, G=0, B=0)
+                            bit = (imgData[cIdx] > 128 && imgData[cIdx+1] < 128) ? 1 : 0; 
+                        }
+                        buf = (buf << 1) | bit;
+                        bitC++;
+                        if (bitC === 8) { arr[idx++] = buf; buf = 0; bitC = 0; }
+                    }
+                }
+            } else {
+                // Màn chuẩn quét trái sang phải
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const cIdx = (w * 4 * y) + x * 4;
+                        let bit = (imgData[cIdx] < 128) ? 0 : 1;
+                        buf = (buf << 1) | bit;
+                        bitC++;
+                        if (bitC === 8) { arr[idx++] = buf; buf = 0; bitC = 0; }
+                    }
+                }
             }
-            return str;
+            if(bitC > 0) { buf <<= (8 - bitC); arr[idx++] = buf; }
+            return arr;
         }
 
-        function stringToImageData(str) {
-            const matches = str.replace(/[\[\]{}]/g, '').match(/0[xX][0-9a-fA-F]{2}/g) || [];
-            if (!matches.length) throw new Error('Không tìm thấy dữ liệu Hex hợp lệ');
-            const result = new Uint8Array(matches.length);
-            for (let i = 0; i < matches.length; i++) result[i] = parseInt(matches[i].substring(2), 16);
-            return result;
+        function generateHex() {
+            const modeStr = document.getElementById('epd-dither').value;
+            const arr = canvasToBytes(modeStr.startsWith('bwr') ? 'bwr' : 'bw');
+            let str = '';
+            for (let i = 0; i < arr.length; i++) {
+                str += '0x' + arr[i].toString(16).padStart(2, '0').toUpperCase();
+                str += (i < arr.length - 1) ? (((i + 1) % 16 === 0) ? ',\n' : ', ') : '';
+            }
+            hexOutput.value = str;
+            log('Đã tạo mã Hex thành công!');
         }
+
+        // --- GIAO TIẾP BLUETOOTH DA14585 ---
+        let daDevice, daChar;
+        const DA_SVC = '00001f10-0000-1000-8000-00805f9b34fb';
+        const DA_CHR = '00001f1f-0000-1000-8000-00805f9b34fb';
+
+        document.getElementById('btn-da-connect').onclick = async () => {
+            try {
+                log('Đang quét DA14585 (tiền tố DLG-)...');
+                daDevice = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "DLG-" }], optionalServices: [DA_SVC] });
+                const server = await daDevice.gatt.connect();
+                const service = await server.getPrimaryService(DA_SVC);
+                daChar = await service.getCharacteristic(DA_CHR);
+                log('✅ Kết nối thành công DA14585!');
+                
+                document.getElementById('btn-da-connect').disabled = true;
+                document.getElementById('btn-disconnect').disabled = false;
+                document.getElementById('btn-da-sync').disabled = false;
+                document.getElementById('btn-da-img').disabled = false;
+                document.getElementById('btn-da-time').disabled = false;
+                document.getElementById('btn-da-cal').disabled = false;
+            } catch (e) { log('❌ Lỗi kết nối: ' + e); }
+        };
+
+        async function daSendCmd(cmd, data = []) {
+            if(!daChar) return false;
+            try {
+                const buf = new Uint8Array([cmd, ...data]);
+                await daChar.writeValue(buf);
+                return true;
+            } catch(e) { log('Lỗi gửi lệnh: ' + e); return false; }
+        }
+
+        document.getElementById('btn-da-sync').onclick = async () => {
+            if(!daChar) return;
+            const now = Math.floor(Date.now() / 1000) + 8 * 3600; // UTC+8
+            const buf = new Uint8Array([0xDD, (now>>24)&0xFF, (now>>16)&0xFF, (now>>8)&0xFF, now&0xFF]);
+            await daChar.writeValue(buf);
+            await new Promise(r=>setTimeout(r, 200)); await daSendCmd(0xE2);
+            log('Đã đồng bộ giờ (UTC+8).');
+        };
+
+        document.getElementById('btn-da-img').onclick = async () => { await daSendCmd(0xE1, [0]); await new Promise(r=>setTimeout(r, 200)); await daSendCmd(0xE2); log('Chế độ Ảnh.'); };
+        document.getElementById('btn-da-time').onclick = async () => { await daSendCmd(0xE1, [2]); await new Promise(r=>setTimeout(r, 200)); await daSendCmd(0xE2); log('Chế độ Giờ.'); };
+        document.getElementById('btn-da-cal').onclick = async () => { await daSendCmd(0xE1, [1]); await new Promise(r=>setTimeout(r, 200)); await daSendCmd(0xE2); log('Chế độ Lịch.'); };
+
+        document.getElementById('btn-upload-eink').onclick = async () => {
+            if(!daChar) return alert('Chưa kết nối Bluetooth DA14585!');
+            try {
+                const modeStr = document.getElementById('epd-dither').value;
+                const dataArr = canvasToBytes('bw');
+                
+                log(`Bắt đầu truyền ảnh (BW)...`);
+                document.getElementById('btn-upload-eink').disabled = true;
+                
+                let cod = (dataArr.length === 3500 || dataArr.length === 9000) ? 0x04 : 0x03;
+                let offset = 0;
+                
+                while(offset < dataArr.length) {
+                    const chunk = Math.min(240, dataArr.length - offset);
+                    const packet = new Uint8Array(4 + chunk);
+                    packet[0] = cod; packet[1] = 0xFF; // BW map
+                    packet[2] = (offset >> 8) & 0xFF; packet[3] = offset & 0xFF;
+                    for(let i=0; i<chunk; i++) packet[4+i] = dataArr[offset+i];
+                    
+                    await daChar.writeValue(packet);
+                    offset += chunk;
+                    uploadProgress.style.width = Math.round((offset/dataArr.length)*100) + '%';
+                    await new Promise(r => setTimeout(r, 20));
+                }
+
+                // Nếu có chế độ đỏ thì gửi thêm map màu đỏ
+                if (modeStr.startsWith('bwr')) {
+                    const redArr = canvasToBytes('bwr');
+                    log(`Bắt đầu truyền map Đỏ...`);
+                    offset = 0;
+                    while(offset < redArr.length) {
+                        const chunk = Math.min(240, redArr.length - offset);
+                        const packet = new Uint8Array(4 + chunk);
+                        packet[0] = cod; packet[1] = 0x00; // Red map
+                        packet[2] = (offset >> 8) & 0xFF; packet[3] = offset & 0xFF;
+                        for(let i=0; i<chunk; i++) packet[4+i] = redArr[offset+i];
+                        
+                        await daChar.writeValue(packet);
+                        offset += chunk;
+                        await new Promise(r => setTimeout(r, 20));
+                    }
+                }
+                
+                log('Truyền xong. Ra lệnh hiển thị...');
+                await daSendCmd(0x01);
+                await daSendCmd(0x04); // Lưu Flash
+                log('HOÀN TẤT!');
+            } catch(e) { log('Lỗi: ' + e); } finally { document.getElementById('btn-upload-eink').disabled = false; }
+        };
+
+        document.getElementById('btn-disconnect').onclick = () => {
+            if(daDevice && daDevice.gatt.connected) daDevice.gatt.disconnect();
+            location.reload(); 
+        };
+
+        // --- GIAO TIẾP BLUETOOTH ESP32 CUSTOM ---
+        let espDev, espChar;
+        document.getElementById('btn-esp-connect').onclick = async () => {
+            try {
+                espDev = await navigator.bluetooth.requestDevice({ filters: [{ services: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b'] }] });
+                const server = await espDev.gatt.connect();
+                const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
+                espChar = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+                log('✅ Đã kết nối ESP32-C3!');
+                document.getElementById('btn-esp-connect').disabled = true;
+                document.getElementById('btn-esp-sync').disabled = false;
+            } catch (e) { log('Lỗi kết nối ESP32: ' + e); }
+        };
+        
+        document.getElementById('btn-esp-sync').onclick = async () => {
+            if (!espChar) return;
+            const now = new Date();
+            const timeStr = `${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
+            await espChar.writeValue(new TextEncoder().encode(timeStr));
+            log(`✅ Gửi ESP32: ${timeStr}`);
+        };
+
+        // Bắt đầu
+        initEvents();
+        ctxS.fillStyle = 'white'; ctxS.fillRect(0,0,250,144);
+        processImage();
     </script>
 </body>
 </html>
