@@ -51,7 +51,7 @@
             --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
             --input-bg: rgba(0, 0, 0, 0.3);
             --input-border: rgba(255, 255, 255, 0.05);
-            --slider-track: rgba(255, 255, 255, 0.1);
+            --slider-track: rgba(255, 255, 255, 0.15);
             --slider-fill: #0a84ff; /* Apple dark blue */
             --code-bg: rgba(0, 0, 0, 0.5);
         }
@@ -70,6 +70,48 @@
             transition: background-color 0.5s, color 0.5s;
         }
 
+        /* Chấm tròn mờ (Ambient Glow Orbs) - Phong cách Apple */
+        .ambient-orb {
+            position: fixed;
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            background: var(--apple-blue);
+            filter: blur(100px);
+            opacity: 0.45;
+            z-index: -1;
+            top: -5%;
+            right: -5%;
+            animation: floatOrb 8s infinite alternate ease-in-out;
+            pointer-events: none;
+        }
+        .ambient-orb-2 {
+            position: fixed;
+            width: 450px;
+            height: 450px;
+            border-radius: 50%;
+            background: var(--apple-red);
+            filter: blur(120px);
+            opacity: 0.25;
+            z-index: -1;
+            bottom: -10%;
+            left: -10%;
+            animation: floatOrb2 12s infinite alternate ease-in-out;
+            pointer-events: none;
+        }
+        
+        body.dark-mode .ambient-orb { opacity: 0.35; background: #0a84ff; }
+        body.dark-mode .ambient-orb-2 { opacity: 0.2; background: #ff375f; }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-40px, 50px) scale(1.1); }
+        }
+        @keyframes floatOrb2 {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, -40px) scale(1.15); }
+        }
+
         .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; position: relative; }
         
         .header-wrapper { display: flex; justify-content: center; align-items: center; margin-bottom: 10px; position: relative; }
@@ -82,7 +124,6 @@
             text-align: center; 
         }
 
-        /* Nút Dark/Light Mode */
         #btn-theme-toggle {
             position: absolute;
             right: 0;
@@ -99,7 +140,6 @@
         }
         #btn-theme-toggle:hover { transform: scale(1.05); }
         
-        /* Glassmorphism Card */
         .card { 
             background: var(--glass-bg); 
             backdrop-filter: blur(24px) saturate(150%); 
@@ -122,7 +162,6 @@
             transition: color 0.5s, border-color 0.5s;
         }
 
-        /* Nút bấm Apple Style */
         .btn { 
             padding: 12px 18px; 
             font-size: 14px; 
@@ -159,12 +198,10 @@
         body.dark-mode .btn-dark { background: #333336; }
         .btn-dark:hover:not(:disabled) { background: #000000; transform: scale(1.02); }
 
-        /* Bố cục Grid & Flex */
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .flex-row { display: flex; gap: 24px; flex-wrap: wrap; }
         .flex-col { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 12px; }
         
-        /* Form & Input Liquid Glass */
         .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
         .form-group label { font-weight: 500; font-size: 13px; color: var(--apple-text-secondary); transition: color 0.5s; }
         
@@ -185,40 +222,52 @@
             box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15); 
         }
 
-        /* --- APPLE STYLE SLIDER --- */
+        /* --- APPLE STYLE SLIDER TÙY BIẾN --- */
         input[type="range"] { 
             -webkit-appearance: none;
             width: 100%;
-            height: 26px; /* Thanh trượt dày */
-            border-radius: 13px;
+            height: 28px; /* Thanh dày dặn hơn */
+            border-radius: 14px; /* Bo cong hai đầu */
             background: var(--slider-track);
             outline: none;
-            /* Gradient được điền qua JavaScript bằng CSS Variable --val */
+            /* Gradient được điền qua JavaScript để tạo phần được làm đầy màu xanh */
             background-image: linear-gradient(var(--slider-fill), var(--slider-fill));
             background-repeat: no-repeat;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
             transition: background-color 0.3s;
+            margin: 10px 0;
+            padding: 0;
         }
         
-        /* Ẩn nút tròn mặc định để trông nguyên khối */
+        /* Nút tròn ở đầu thanh trượt (Thumb) */
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 26px;
-            width: 20px;
-            background: transparent;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #ffffff;
+            /* Tạo bóng mờ (blur glow) xung quanh nút */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0,0,0,0.1);
             cursor: pointer;
+            transition: transform 0.15s ease;
         }
         
-        /* Fix cho Firefox */
+        /* Hiệu ứng phóng to nhẹ khi giữ kéo */
+        input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.1); 
+        }
+        
+        /* Dành cho Firefox */
         input[type="range"]::-moz-range-thumb {
-            height: 26px;
-            width: 20px;
-            background: transparent;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2), 0 0 10px rgba(0,0,0,0.1);
             border: none;
             cursor: pointer;
         }
-        
-        /* Console Log - Dark Frosted Glass */
+
         #status-console { 
             background: rgba(0, 0, 0, 0.75); 
             backdrop-filter: blur(10px);
@@ -236,11 +285,9 @@
         #status-console::-webkit-scrollbar { width: 8px; }
         #status-console::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
         
-        /* Thanh tiến trình */
         .progress-container { width: 100%; height: 6px; background: var(--slider-track); border-radius: 3px; overflow: hidden; margin-top: 12px; }
         .progress-bar { height: 100%; background: var(--apple-blue); width: 0%; transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
 
-        /* Canvas & Cropper */
         .preview-box { 
             background: var(--input-bg); 
             border: 1px solid var(--input-border); 
@@ -253,7 +300,7 @@
             transition: background 0.5s, border 0.5s;
         }
         #preview-canvas { 
-            background: white; /* Canvas E-ink luôn màu trắng */
+            background: white; 
             box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
             max-width: 100%; 
             image-rendering: pixelated; 
@@ -284,6 +331,10 @@
 </head>
 
 <body>
+    <!-- Vệt sáng lơ lửng phía sau -->
+    <div class="ambient-orb"></div>
+    <div class="ambient-orb-2"></div>
+
     <div class="container">
         <div class="header-wrapper">
             <h1>BMO E-ink Controller</h1>
@@ -485,7 +536,9 @@
             const max = parseFloat(input.max) || 100;
             const val = parseFloat(input.value);
             const percent = ((val - min) / (max - min)) * 100;
-            input.style.backgroundSize = `${percent}% 100%`;
+            // Sửa lỗi hở màu: Tính toán bù trừ 14px (một nửa của nút tròn 28px) 
+            // để phần nền màu xanh luôn căn chuẩn xác vào đúng tâm của nút
+            input.style.backgroundSize = `calc(${percent}% + (${14 - percent * 0.28}px)) 100%`;
         }
 
         // Khởi tạo tất cả input range theo Apple style
@@ -830,7 +883,7 @@
             return intIn.toString(16).padStart(bytes * 2, '0');
         }
 
-        // BĂM ẢNH THÀNH MẢNG THEO CHUẨN GỐC
+        // BĂM ẢNH THÀNH MẢNG
         function canvas2bytes(canvas, type = 'bw') {
             const ctx = canvas.getContext("2d", { willReadFrequently: true });
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -900,7 +953,7 @@
 
         document.getElementById('btn-da-connect').onclick = async () => {
             if (!navigator.bluetooth) {
-                alert('Trình duyệt này không hỗ trợ Bluetooth!\n👉 Trên iOS (iPhone/iPad): Vui lòng tải ứng dụng "Bluefy" từ App Store để kết nối.');
+                alert('Trình duyệt này không hỗ trợ Bluetooth!\n Trên iOS (iPhone/iPad): Vui lòng tải ứng dụng "Bluefy" từ App Store để kết nối.');
                 return;
             }
             try {
@@ -909,7 +962,7 @@
                 const server = await daDevice.gatt.connect();
                 const service = await server.getPrimaryService(DA_SVC);
                 daChar = await service.getCharacteristic(DA_CHR);
-                log('✅ Kết nối thành công DA14585!');
+                log('Kết nối thành công DA14585!');
                 
                 document.getElementById('btn-da-connect').disabled = true;
                 document.getElementById('btn-disconnect').disabled = false;
@@ -917,7 +970,7 @@
                 document.getElementById('btn-da-img').disabled = false;
                 document.getElementById('btn-da-time').disabled = false;
                 document.getElementById('btn-da-cal').disabled = false;
-            } catch (e) { log('❌ Lỗi kết nối: ' + e); }
+            } catch (e) { log('Lỗi kết nối: ' + e); }
         };
 
         async function daSendCmdBytes(buf) {
@@ -969,7 +1022,6 @@
                 
                 log(`Bắt đầu truyền ảnh (BW)...`);
                 
-                // Đồng bộ chính xác Header gửi đi (Chuẩn 4-Byte)
                 let cod = (dataArr.length === 3500 || dataArr.length === 9000) ? 0x04 : 0x03;
                 let offset = 0;
                 
@@ -1023,7 +1075,7 @@
                     await daSendCmdBytes(hexToBytes("01"));
                 }
                 
-                log('HOÀN TẤT!');
+                log('Cập nhật thành công!');
             } catch(e) { log('Lỗi: ' + e); } finally { document.getElementById('btn-upload-eink').disabled = false; }
         };
 
@@ -1036,7 +1088,7 @@
         let espDev, espChar;
         document.getElementById('btn-esp-connect').onclick = async () => {
             if (!navigator.bluetooth) {
-                alert('Trình duyệt này không hỗ trợ Bluetooth!\n👉 Trên iOS (iPhone/iPad): Vui lòng tải ứng dụng "Bluefy" từ App Store để kết nối.');
+                alert('Trình duyệt này không hỗ trợ Bluetooth!\n Trên iOS (iPhone/iPad): Vui lòng tải ứng dụng "Bluefy" từ App Store để kết nối.');
                 return;
             }
             try {
@@ -1047,7 +1099,7 @@
                 const server = await espDev.gatt.connect();
                 const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
                 espChar = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
-                log('✅ Đã kết nối ESP32-C3!');
+                log('Kết nối ESP32-C3 thành công!');
                 document.getElementById('btn-esp-connect').disabled = true;
                 document.getElementById('btn-esp-sync').disabled = false;
             } catch (e) { 
@@ -1062,7 +1114,7 @@
             const now = new Date();
             const timeStr = `${prefix}${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
             await espChar.writeValue(new TextEncoder().encode(timeStr));
-            log(`✅ Gửi ESP32: ${timeStr}`);
+            log(`Đã gửi ESP32: ${timeStr}`);
         };
 
         // Khởi động
