@@ -5,120 +5,297 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BMO E-ink Controller</title>
     
-    <!-- Thư viện hỗ trợ Cropper & QR -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
     
     <style>
         :root {
-            --primary: #4f46e5;
-            --primary-hover: #4338ca;
-            --bg: #f3f4f6;
-            --card: #ffffff;
-            --text: #1f2937;
-            --border: #e5e7eb;
+            /* Apple Colors */
+            --apple-blue: #0071e3;
+            --apple-blue-hover: #0077ed;
+            --apple-green: #34c759;
+            --apple-green-hover: #30b753;
+            --apple-red: #ff3b30;
+            --apple-red-hover: #e0352b;
+            
+            /* Light Theme (Mặc định) */
+            --bg-color: #f8fafc;
+            --bg-gradient: radial-gradient(at 0% 0%, #e0e7ff 0%, transparent 50%), 
+                           radial-gradient(at 100% 0%, #fbcfe8 0%, transparent 50%), 
+                           radial-gradient(at 100% 100%, #c7d2fe 0%, transparent 50%), 
+                           radial-gradient(at 0% 100%, #f3e8ff 0%, transparent 50%);
+            --apple-text: #1d1d1f;
+            --apple-text-secondary: #86868b;
+            --glass-bg: rgba(255, 255, 255, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+            --input-bg: rgba(255, 255, 255, 0.7);
+            --input-border: rgba(0, 0, 0, 0.04);
+            --slider-track: rgba(0, 0, 0, 0.08);
+            --slider-fill: var(--apple-blue);
+            --code-bg: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Dark Theme */
+        body.dark-mode {
+            --bg-color: #0f1115;
+            --bg-gradient: radial-gradient(at 0% 0%, #1e1b4b 0%, transparent 50%), 
+                           radial-gradient(at 100% 0%, #31102f 0%, transparent 50%), 
+                           radial-gradient(at 100% 100%, #172554 0%, transparent 50%), 
+                           radial-gradient(at 0% 100%, #2e1065 0%, transparent 50%);
+            --apple-text: #f5f5f7;
+            --apple-text-secondary: #a1a1a6;
+            --glass-bg: rgba(30, 30, 35, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --input-border: rgba(255, 255, 255, 0.05);
+            --slider-track: rgba(255, 255, 255, 0.1);
+            --slider-fill: #0a84ff; /* Apple dark blue */
+            --code-bg: rgba(0, 0, 0, 0.5);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
-            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg-color);
+            background-image: var(--bg-gradient);
+            background-attachment: fixed;
             min-height: 100vh; 
-            color: var(--text); 
-            padding: 20px 10px; 
+            color: var(--apple-text); 
+            padding: 40px 15px; 
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 0.5s, color 0.5s;
         }
 
-        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; position: relative; }
         
-        h1 { font-size: 2.2rem; color: var(--primary); text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .header-wrapper { display: flex; justify-content: center; align-items: center; margin-bottom: 10px; position: relative; }
         
+        h1 { 
+            font-size: 2.5rem; 
+            font-weight: 700; 
+            letter-spacing: -0.02em; 
+            color: var(--apple-text); 
+            text-align: center; 
+        }
+
+        /* Nút Dark/Light Mode */
+        #btn-theme-toggle {
+            position: absolute;
+            right: 0;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--apple-text);
+            border-radius: 50px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+        #btn-theme-toggle:hover { transform: scale(1.05); }
+        
+        /* Glassmorphism Card */
         .card { 
-            background: var(--card); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
-            padding: 20px; border: 1px solid var(--border);
+            background: var(--glass-bg); 
+            backdrop-filter: blur(24px) saturate(150%); 
+            -webkit-backdrop-filter: blur(24px) saturate(150%);
+            border-radius: 20px; 
+            box-shadow: var(--glass-shadow); 
+            padding: 24px; 
+            border: 1px solid var(--glass-border);
+            transition: background-color 0.5s, border-color 0.5s, box-shadow 0.5s;
         }
         
-        .card-title { font-size: 1.2rem; font-weight: 600; margin-bottom: 15px; color: #374151; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+        .card-title { 
+            font-size: 1.25rem; 
+            font-weight: 600; 
+            margin-bottom: 16px; 
+            color: var(--apple-text); 
+            padding-bottom: 12px; 
+            border-bottom: 1px solid var(--input-border);
+            letter-spacing: -0.01em;
+            transition: color 0.5s, border-color 0.5s;
+        }
 
-        /* Nút bấm */
+        /* Nút bấm Apple Style */
         .btn { 
-            padding: 10px 15px; font-size: 14px; font-weight: 600; border-radius: 8px; border: none; 
-            background: var(--primary); color: white; cursor: pointer; transition: all 0.2s; 
-            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 12px 18px; 
+            font-size: 14px; 
+            font-weight: 500; 
+            border-radius: 12px; 
+            border: none; 
+            cursor: pointer; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            letter-spacing: -0.01em;
         }
-        .btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
-        .btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
-        .btn-success { background: #10b981; } .btn-success:hover:not(:disabled) { background: #059669; }
-        .btn-danger { background: #ef4444; } .btn-danger:hover:not(:disabled) { background: #dc2626; }
-        .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
-        .btn-outline:hover:not(:disabled) { background: #f3f4f6; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
         
-        /* Bố cục Grid */
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .flex-row { display: flex; gap: 20px; flex-wrap: wrap; }
-        .flex-col { flex: 1; min-width: 250px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-primary { background: var(--apple-blue); color: white; box-shadow: 0 4px 10px rgba(0, 113, 227, 0.2); }
+        .btn-primary:hover:not(:disabled) { background: var(--apple-blue-hover); transform: scale(1.02); }
         
-        /* Form & Input */
-        .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
-        .form-group label { font-weight: 500; font-size: 13px; color: #4b5563; }
-        .form-control { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; width: 100%; }
-        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
-        input[type="range"] { accent-color: var(--primary); }
+        .btn-success { background: var(--apple-green); color: white; box-shadow: 0 4px 10px rgba(52, 199, 89, 0.2); }
+        .btn-success:hover:not(:disabled) { background: var(--apple-green-hover); transform: scale(1.02); }
         
-        /* Trạng thái */
+        .btn-danger { background: var(--apple-red); color: white; box-shadow: 0 4px 10px rgba(255, 59, 48, 0.2); }
+        .btn-danger:hover:not(:disabled) { background: var(--apple-red-hover); transform: scale(1.02); }
+        
+        .btn-outline { 
+            background: var(--input-bg); 
+            color: var(--apple-text); 
+            border: 1px solid var(--input-border); 
+            backdrop-filter: blur(10px);
+        }
+        .btn-outline:hover:not(:disabled) { background: var(--apple-blue); color: white; border-color: var(--apple-blue); transform: scale(1.02); }
+        
+        .btn-dark { background: #1d1d1f; color: white; border: 1px solid rgba(255,255,255,0.1); }
+        body.dark-mode .btn-dark { background: #333336; }
+        .btn-dark:hover:not(:disabled) { background: #000000; transform: scale(1.02); }
+
+        /* Bố cục Grid & Flex */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .flex-row { display: flex; gap: 24px; flex-wrap: wrap; }
+        .flex-col { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 12px; }
+        
+        /* Form & Input Liquid Glass */
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+        .form-group label { font-weight: 500; font-size: 13px; color: var(--apple-text-secondary); transition: color 0.5s; }
+        
+        .form-control { 
+            padding: 10px 14px; 
+            background: var(--input-bg); 
+            border: 1px solid var(--input-border); 
+            border-radius: 10px; 
+            font-size: 14px; 
+            width: 100%; 
+            color: var(--apple-text);
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .form-control:focus { 
+            outline: none; 
+            border-color: rgba(0, 113, 227, 0.4); 
+            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15); 
+        }
+
+        /* --- APPLE STYLE SLIDER --- */
+        input[type="range"] { 
+            -webkit-appearance: none;
+            width: 100%;
+            height: 26px; /* Thanh trượt dày */
+            border-radius: 13px;
+            background: var(--slider-track);
+            outline: none;
+            /* Gradient được điền qua JavaScript bằng CSS Variable --val */
+            background-image: linear-gradient(var(--slider-fill), var(--slider-fill));
+            background-repeat: no-repeat;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+            transition: background-color 0.3s;
+        }
+        
+        /* Ẩn nút tròn mặc định để trông nguyên khối */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 26px;
+            width: 20px;
+            background: transparent;
+            cursor: pointer;
+        }
+        
+        /* Fix cho Firefox */
+        input[type="range"]::-moz-range-thumb {
+            height: 26px;
+            width: 20px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        
+        /* Console Log - Dark Frosted Glass */
         #status-console { 
-            background: #1f2937; color: #10b981; font-family: monospace; font-size: 13px; 
-            padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; white-space: pre-wrap;
+            background: rgba(0, 0, 0, 0.75); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: #34c759; 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
+            font-size: 12px; 
+            padding: 16px; 
+            border-radius: 12px; 
+            height: 160px; 
+            overflow-y: auto; 
+            white-space: pre-wrap;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        #status-console::-webkit-scrollbar { width: 8px; }
+        #status-console::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
         
         /* Thanh tiến trình */
-        .progress-container { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-top: 10px; }
-        .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
+        .progress-container { width: 100%; height: 6px; background: var(--slider-track); border-radius: 3px; overflow: hidden; margin-top: 12px; }
+        .progress-bar { height: 100%; background: var(--apple-blue); width: 0%; transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
 
         /* Canvas & Cropper */
         .preview-box { 
-            background: #f9fafb; border: 2px dashed #cbd5e1; border-radius: 8px; 
-            padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            background: var(--input-bg); 
+            border: 1px solid var(--input-border); 
+            border-radius: 16px; 
+            padding: 24px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            transition: background 0.5s, border 0.5s;
         }
         #preview-canvas { 
-            background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 100%; 
+            background: white; /* Canvas E-ink luôn màu trắng */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            max-width: 100%; 
             image-rendering: pixelated; 
+            border-radius: 4px;
         }
         #cropper-container { 
             display: none; 
-            margin-top: 15px; 
-            background: #f8fafc; 
-            padding: 15px; 
-            border-radius: 8px; 
-            border: 1px solid var(--border);
+            margin-top: 16px; 
+            background: var(--code-bg); 
+            padding: 16px; 
+            border-radius: 12px; 
+            border: 1px solid var(--glass-border);
         }
-        .img-container { 
-            max-height: 400px; 
-            width: 100%; 
-        }
-        .img-container img {
-            display: block;
-            max-width: 100%;
-        }
-        .cropper-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .img-container { max-height: 350px; width: 100%; border-radius: 8px; overflow: hidden; }
+        .img-container img { display: block; max-width: 100%; }
+        .cropper-actions { display: flex; gap: 12px; margin-top: 16px; }
+
+        hr { border: 0; border-top: 1px solid var(--input-border); margin: 16px 0; transition: border-color 0.5s; }
 
         @media (max-width: 768px) {
             .grid-2 { grid-template-columns: 1fr; }
+            body { padding: 20px 10px; }
+            .card { padding: 16px; }
+            .header-wrapper { flex-direction: column; gap: 10px; }
+            #btn-theme-toggle { position: static; }
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>BMO E-ink Controller</h1>
+        <div class="header-wrapper">
+            <h1>BMO E-ink Controller</h1>
+            <button id="btn-theme-toggle">Giao diện Tối</button>
+        </div>
 
         <!-- 1. KHU VỰC KẾT NỐI BLUETOOTH -->
         <div class="card grid-2">
             <div>
-                <div class="card-title">📡 Mạch DA14585 (Gốc)</div>
+                <div class="card-title">Mạch DA14585 (Gốc)</div>
                 <div class="form-group">
-                    <button id="btn-da-connect" class="btn">Kết Nối DA14585</button>
+                    <button id="btn-da-connect" class="btn btn-primary">Kết Nối DA14585</button>
                     <button id="btn-da-sync" class="btn btn-success" disabled>Đồng Bộ Giờ</button>
                     <div class="grid-2 mt-2">
                         <button id="btn-da-img" class="btn btn-outline" disabled>Chế Độ Ảnh</button>
@@ -129,9 +306,9 @@
                 </div>
             </div>
             <div>
-                <div class="card-title">⚡ Mạch ESP32-C3 (Custom)</div>
+                <div class="card-title">Mạch ESP32-C3 (Tùy biến)</div>
                 <div class="form-group">
-                    <button id="btn-esp-connect" class="btn" style="background: #0d9488;">Kết Nối ESP32-C3</button>
+                    <button id="btn-esp-connect" class="btn btn-dark">Kết Nối ESP32-C3</button>
                 </div>
                 <div class="form-group mt-2">
                     <label>Mã Lệnh Kèm Theo (Prefix):</label>
@@ -145,13 +322,13 @@
 
         <!-- 2. XỬ LÝ NỘI DUNG & UPLOAD -->
         <div class="card">
-            <div class="card-title">🖼️ Tạo & Chỉnh Sửa Nội Dung</div>
+            <div class="card-title">Tạo & Chỉnh Sửa Nội Dung</div>
             
             <div class="flex-row">
                 <!-- Công cụ Tạo nội dung -->
                 <div class="flex-col">
                     <div class="form-group">
-                        <label>1. Kích thước màn hình</label>
+                        <label>Kích thước màn hình</label>
                         <select id="epd-size" class="form-control">
                             <option value="212x104" selected>2.13" (212x104) - Mặc định</option>
                             <option value="250x144">2.13" HD (250x144)</option>
@@ -162,25 +339,27 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Tạo ảnh từ Văn bản (Đa ngôn ngữ)</label>
-                        <textarea id="text-input-area" class="form-control" placeholder="Nhập văn bản vào đây... (Hỗ trợ tiếng Việt, Nhật, Trung)" rows="2"></textarea>
-                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <label>Tạo ảnh từ Văn bản</label>
+                        <textarea id="text-input-area" class="form-control" placeholder="Nhập văn bản vào đây... (Hỗ trợ đa ngôn ngữ)" rows="2"></textarea>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
                             <select id="text-font-family" class="form-control" style="flex: 2;">
-                                <option value="Arial, sans-serif">Cơ bản (Arial)</option>
+                                <option value="-apple-system, BlinkMacSystemFont, Arial, sans-serif">Cơ bản (San Francisco/Arial)</option>
                                 <option value="'Times New Roman', serif">Có chân (Times)</option>
-                                <option value="'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif">Tiếng Nhật (JP)</option>
-                                <option value="'Microsoft YaHei', 'PingFang SC', sans-serif">Tiếng Trung (CN)</option>
+                                <option value="'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif">Tiếng Nhật</option>
+                                <option value="'Microsoft YaHei', 'PingFang SC', sans-serif">Tiếng Trung</option>
                             </select>
                             <input type="number" id="text-font-size" class="form-control" value="24" style="flex: 1;" placeholder="Cỡ chữ">
-                            <label style="display: flex; align-items: center; gap: 2px;"><input type="checkbox" id="text-bold" checked> Đậm</label>
+                            <label style="display: flex; align-items: center; gap: 4px; color: var(--apple-text); font-size: 13px;">
+                                <input type="checkbox" id="text-bold" checked> Đậm
+                            </label>
                         </div>
-                        <button id="btn-add-text" class="btn btn-outline" style="margin-top: 5px;">Tạo Ảnh Từ Chữ</button>
+                        <button id="btn-add-text" class="btn btn-outline" style="margin-top: 8px;">Tạo Ảnh Từ Chữ</button>
                     </div>
 
-                    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 5px 0;">
+                    <hr>
 
                     <div class="form-group">
-                        <label>Hoặc Tải ảnh lên</label>
+                        <label>Tải ảnh lên</label>
                         <input type="file" id="image-upload" class="form-control" accept="image/*">
                         
                         <!-- Vùng Cropper có xoay ảnh -->
@@ -189,22 +368,22 @@
                                 <img id="cropper-image" alt="Ảnh tải lên">
                             </div>
                             <div class="cropper-actions">
-                                <button id="btn-rotate-left" class="btn btn-outline" style="flex: 1;">↺ Xoay Trái</button>
-                                <button id="btn-rotate-right" class="btn btn-outline" style="flex: 1;">↻ Xoay Phải</button>
+                                <button id="btn-rotate-left" class="btn btn-outline" style="flex: 1;">Xoay Trái</button>
+                                <button id="btn-rotate-right" class="btn btn-outline" style="flex: 1;">Xoay Phải</button>
                             </div>
-                            <button id="btn-crop" class="btn btn-success" style="width: 100%; margin-top: 15px;">✅ Cắt & Xem Trước</button>
+                            <button id="btn-crop" class="btn btn-primary" style="width: 100%; margin-top: 12px;">Xác Nhận Cắt</button>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Hoặc tạo QR Code</label>
-                        <div style="display: flex; gap: 5px;">
-                            <input type="text" id="qr-input" class="form-control" placeholder="Nhập link hoặc văn bản...">
-                            <button id="btn-add-qr" class="btn">Tạo QR</button>
+                        <label>Tạo Mã QR</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="qr-input" class="form-control" placeholder="Nhập liên kết hoặc văn bản...">
+                            <button id="btn-add-qr" class="btn btn-outline">Tạo QR</button>
                         </div>
                     </div>
 
-                    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 5px 0;">
+                    <hr>
 
                     <div class="form-group">
                         <label>Thuật toán Khử Răng Cưa (Dithering)</label>
@@ -213,6 +392,7 @@
                             <option value="atkinson">Đen Trắng - Atkinson</option>
                             <option value="bayer">Đen Trắng - Bayer</option>
                             <option value="stucki">Đen Trắng - Stucki</option>
+                            <option value="jarvis">Đen Trắng - Jarvis</option>
                             <option value="none">Đen Trắng - Không khử (Threshold)</option>
                             <option value="bwr_floydsteinberg">Đỏ/Đen/Trắng - Floyd-Steinberg</option>
                         </select>
@@ -230,16 +410,24 @@
                         <label>Độ tương phản: <span id="val-contrast">100</span></label>
                         <input type="range" id="adj-contrast" min="0" max="200" value="100">
                     </div>
+                    <div class="form-group">
+                        <label>Cường độ Dithering: <span id="val-diffusion">50</span></label>
+                        <input type="range" id="diffusion" min="0" max="100" value="50">
+                    </div>
+                    <div class="form-group">
+                        <label>Độ trễ gửi lệnh (ms): <span id="val-interval">20</span></label>
+                        <input type="range" id="confirmInterval" min="0" max="100" value="20">
+                    </div>
                 </div>
 
                 <!-- Preview & Upload -->
                 <div class="flex-col">
-                    <label style="font-weight: 500; font-size: 13px; color: #4b5563;">Kết Quả Xem Trước (Preview)</label>
+                    <label style="font-weight: 500; font-size: 13px; color: var(--apple-text-secondary);">Kết Quả Xem Trước</label>
                     <div class="preview-box">
                         <canvas id="preview-canvas" width="212" height="104"></canvas>
                         
-                        <button id="btn-upload-eink" class="btn btn-success" style="width: 100%; margin-top: 20px; font-size: 16px; padding: 15px;" disabled>
-                            🚀 BẮN ẢNH SANG E-INK
+                        <button id="btn-upload-eink" class="btn btn-success" style="width: 100%; margin-top: 24px; font-size: 15px; padding: 14px;" disabled>
+                            Cập Nhật E-ink
                         </button>
                         
                         <div class="progress-container">
@@ -253,13 +441,13 @@
         <!-- 3. CONSOLE & HEX -->
         <div class="card grid-2">
             <div>
-                <div class="card-title">📝 Console Log</div>
-                <div id="status-console">Sẵn sàng...</div>
+                <div class="card-title">Console Log</div>
+                <div id="status-console">Đã sẵn sàng...</div>
             </div>
             <div>
-                <div class="card-title">⚙️ Mã Hex Thô (Dev)</div>
-                <textarea id="hex-output" class="form-control" style="height: 110px; font-family: monospace; font-size: 11px;" readonly placeholder="Mã Hex sẽ hiện ở đây sau khi bạn tạo..."></textarea>
-                <button id="btn-generate-hex" class="btn btn-outline" style="width: 100%; margin-top: 10px;">Tạo Mã Hex</button>
+                <div class="card-title">Mã Hex Thô (Chế độ Nhà phát triển)</div>
+                <textarea id="hex-output" class="form-control" style="height: 110px; font-family: monospace; font-size: 11px; background: var(--code-bg);" readonly placeholder="Mã Hex sẽ hiện ở đây sau khi bạn tạo..."></textarea>
+                <button id="btn-generate-hex" class="btn btn-outline" style="width: 100%; margin-top: 12px;">Tạo Mã Hex</button>
             </div>
         </div>
     </div>
@@ -273,7 +461,41 @@
             return Math.round(val * 10000) / 10000;
         }
 
-        // ================= CẤU HÌNH & DOM =================
+        // ================= CẤU HÌNH DARK/LIGHT MODE & SLIDERS =================
+        function initTheme() {
+            const themeBtn = document.getElementById('btn-theme-toggle');
+            const body = document.body;
+            
+            // Lấy preference đã lưu
+            if (localStorage.getItem('bmo-theme') === 'dark') {
+                body.classList.add('dark-mode');
+                themeBtn.textContent = 'Giao diện Sáng';
+            }
+
+            themeBtn.onclick = () => {
+                body.classList.toggle('dark-mode');
+                const isDark = body.classList.contains('dark-mode');
+                localStorage.setItem('bmo-theme', isDark ? 'dark' : 'light');
+                themeBtn.textContent = isDark ? 'Giao diện Sáng' : 'Giao diện Tối';
+            };
+        }
+
+        function updateSliderGradient(input) {
+            const min = parseFloat(input.min) || 0;
+            const max = parseFloat(input.max) || 100;
+            const val = parseFloat(input.value);
+            const percent = ((val - min) / (max - min)) * 100;
+            input.style.backgroundSize = `${percent}% 100%`;
+        }
+
+        // Khởi tạo tất cả input range theo Apple style
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            updateSliderGradient(input);
+            input.addEventListener('input', (e) => updateSliderGradient(e.target));
+        });
+
+
+        // ================= CẤU HÌNH DOM & BIẾN TOÀN CỤC =================
         let epdConfig = { w: 212, h: 104 }; // Mặc định 2.13" thường
         
         const canvasPreview = document.getElementById('preview-canvas');
@@ -297,7 +519,7 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // ================= KHỞI TẠO & LẮNG NGHE SỰ KIỆN =================
+        // ================= KHỞI TẠO & LẮNG NGHE SỰ KIỆN CHÍNH =================
         function initEvents() {
             // Thay đổi kích thước E-ink
             document.getElementById('epd-size').addEventListener('change', (e) => {
@@ -307,10 +529,8 @@
                 canvasPreview.width = w; canvasPreview.height = h;
                 canvasSource.width = w; canvasSource.height = h;
                 
-                // Cập nhật tỷ lệ khung cắt (làm tròn R4)
                 if(cropper) cropper.setAspectRatio(R4(w / h));
                 
-                // Xoá trắng nền
                 ctxS.fillStyle = 'white';
                 ctxS.fillRect(0, 0, w, h);
                 processImage();
@@ -350,7 +570,6 @@
                 if(!cropper) return;
                 const cropped = cropper.getCroppedCanvas({ width: epdConfig.w, height: epdConfig.h });
                 
-                // Vẽ ảnh cắt vào Source Canvas
                 ctxS.fillStyle = 'white';
                 ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
                 ctxS.drawImage(cropped, 0, 0, epdConfig.w, epdConfig.h);
@@ -359,7 +578,7 @@
                 cropper.destroy(); cropper = null;
                 document.getElementById('image-upload').value = '';
                 
-                log('✅ Đã xác nhận ảnh và chuyển sang Preview!');
+                log('Đã xác nhận cắt ảnh và chuyển sang Preview.');
                 processImage();
             };
 
@@ -380,7 +599,6 @@
                 ctxS.textAlign = 'center';
                 ctxS.textBaseline = 'middle';
 
-                // Hỗ trợ vẽ nhiều dòng
                 const lines = text.split('\n');
                 const lineHeight = fontSize * 1.3;
                 const totalHeight = lines.length * lineHeight;
@@ -391,14 +609,14 @@
                     startY += lineHeight;
                 });
 
-                log('Đã tạo ảnh từ văn bản thành công!');
+                log('Đã tạo ảnh từ văn bản thành công.');
                 processImage();
             };
 
             // Tạo QR Code
             document.getElementById('btn-add-qr').onclick = () => {
                 const text = document.getElementById('qr-input').value;
-                if(!text) return alert("Vui lòng nhập nội dung QR!");
+                if(!text) return alert("Vui lòng nhập nội dung để tạo QR!");
                 const qrDiv = document.createElement('div');
                 new QRCode(qrDiv, { text: text, width: epdConfig.h, height: epdConfig.h, colorDark: "#000", colorLight: "#fff", correctLevel: QRCode.CorrectLevel.L });
                 
@@ -407,11 +625,10 @@
                     if(canvas) {
                         ctxS.fillStyle = 'white';
                         ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
-                        // Căn giữa QR
                         const xOffset = R4((epdConfig.w - epdConfig.h) / 2);
                         ctxS.drawImage(canvas, xOffset, 0, epdConfig.h, epdConfig.h);
                         
-                        log('Tạo QR Code thành công!');
+                        log('Tạo QR Code thành công.');
                         processImage();
                     }
                 }, 100);
@@ -424,6 +641,13 @@
                     document.getElementById(`val-${id}`).textContent = e.target.value;
                     processImage();
                 });
+            });
+            document.getElementById('diffusion').addEventListener('input', e => {
+                document.getElementById('val-diffusion').textContent = e.target.value;
+                processImage();
+            });
+            document.getElementById('confirmInterval').addEventListener('input', e => {
+                document.getElementById('val-interval').textContent = e.target.value;
             });
             document.getElementById('epd-dither').addEventListener('change', processImage);
 
@@ -466,8 +690,7 @@
             // 3. Dithering
             const mode = document.getElementById('epd-dither').value;
             const thresh = parseInt(document.getElementById('adj-thresh').value);
-            // Cố định diffusion ở 1.0 (chuẩn) để tránh rối
-            const diff = 1.0; 
+            const diff = R4(parseInt(document.getElementById('diffusion').value) / 100);
 
             // Hàm phân phối lỗi
             const addErr = (ix, err, f) => {
@@ -607,7 +830,7 @@
             return intIn.toString(16).padStart(bytes * 2, '0');
         }
 
-        // BĂM ẢNH THÀNH MẢNG
+        // BĂM ẢNH THÀNH MẢNG THEO CHUẨN GỐC
         function canvas2bytes(canvas, type = 'bw') {
             const ctx = canvas.getContext("2d", { willReadFrequently: true });
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -630,7 +853,6 @@
             return arr;
         }
 
-        // Màn 2.13" quét từ x=w-1 (phải sang trái)
         function canvas2bytes_bw(canvas, type='bw') {
             const ctx = canvas.getContext("2d", { willReadFrequently: true });
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -843,7 +1065,8 @@
             log(`✅ Gửi ESP32: ${timeStr}`);
         };
 
-        // Bắt đầu
+        // Khởi động
+        initTheme();
         initEvents();
         ctxS.fillStyle = 'white'; ctxS.fillRect(0,0,212,104);
         processImage();
