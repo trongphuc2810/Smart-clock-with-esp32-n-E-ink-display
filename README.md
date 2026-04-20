@@ -20,6 +20,8 @@ các file .stl sẽ cập nhật thêm
 - <img width="774" height="586" alt="image" src="https://github.com/user-attachments/assets/a09313e7-a2de-47ba-acee-b417f5755844" />
 ## đây là thành quả 
 <img width="3024" height="3023" alt="PXL_20260420_163116524" src="https://github.com/user-attachments/assets/653b8386-11ba-4434-9d7e-42799817d959" />
+
 ## Ghi chú
 - Sẽ cập nhật thêm...
-## dự án này work with gemini đừng gạch đá tôi nếu nó chưa tốt pls
+
+## Dự án này work with gemini đừng gạch đá tôi nếu nó chưa tốt pls
