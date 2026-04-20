@@ -1,0 +1,699 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <DHT.h>
+#include <time.h>
+#include <sys/time.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <Preferences.h>
+
+// ===== PINOUT (4 NÚT CẢM ỨNG) =====
+#define SDA_PIN 4
+#define SCL_PIN 5
+#define DHTPIN  0
+#define LIGHT_PIN 1
+#define BUZZER_PIN 3
+#define BTN_L 10    
+#define BTN_M 7     
+#define BTN_R 6     
+#define BTN_S 21    
+
+#define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+DHT dht(DHTPIN, DHT11);
+Preferences pref;
+BLEServer *pServer = NULL;
+BLEAdvertising *pAdvertising = NULL;
+
+// ===== SYSTEM STATES =====
+enum UIState { STATE_CLOCK, STATE_MENU, STATE_ENV, STATE_LIGHT, STATE_SETTINGS, STATE_POMO, STATE_TIMER, STATE_ART, STATE_BMO_FACE, STATE_GAMES_MENU, STATE_ALARM, STATE_STOPWATCH, STATE_TREX, STATE_SPACE, STATE_PONG, STATE_SLEEP };
+UIState uiState = STATE_CLOCK;
+int menuIdx = 0, pomoEditIdx = 0, gameIdx = 0; 
+
+// Logic Settings
+int settingCursor = 0; 
+int settingMode = 0;   
+bool tempBtOn = false, tempSleepOn = false; 
+int macroAction = 0, tempMacro = 0; 
+
+// Biến hệ thống
+bool wifiOn, btOn, autoSleepOn;
+int pomoWork = 25, pomoBreak = 5, timerSetMin = 5, timerSec = 0; 
+bool timeSynced = false, isPomoRunning = false, isBreakTime = false, isTimerRunning = false;
+bool isPomoPaused = false, pomoWaitingNext = false; 
+float temp = 0.0, humi = 0.0, volt = 0.0;
+
+// BIẾN CHO BÁO THỨC & BẤM GIỜ
+int alarmHour = 0, alarmMin = 0;
+bool alarmActive = false, alarmRepeat = false;
+int alarmEditIdx = 0;
+unsigned long swStartTime = 0, swElapsedTime = 0;
+bool isSwRunning = false;
+
+// BIẾN CHO CẢM BIẾN ÁNH SÁNG & AUTO SLEEP
+unsigned long darkStartTime = 0;
+bool isDark = false;
+int currentAutoBright = -1;
+bool manualSleepOverride = false; 
+
+unsigned long lastDhtRead = 0, lastLightRead = 0, lastFrameTime = 0, lastInteract = 0, btStartTime = 0;
+const unsigned long BT_TIMEOUT = 600000UL;      
+const unsigned long SLEEP_TIMEOUT = 7200000UL;  
+const unsigned long MENU_TIMEOUT = 9000UL;      
+
+unsigned long buzzerTimer = 0, pomoStartTime = 0, pomoCurrentSec = 0, timerStartTime = 0, bOff = 0;
+bool forceRedraw = true, alarmRinging = false, flashState = false, pendingSleepMacro = false; 
+
+// CƠ CHẾ CHỐNG BURN-IN NHÍCH NHẸ
+unsigned long lastShiftTime = 0;
+int shiftX = 0, shiftY = 0;
+int prevX[2] = {99, 99}, prevY[2] = {99, 99}; 
+bool isInvertedMode = false; 
+
+struct Star { int x, y; bool b; } stars[40];
+
+// ===== BIẾN DÀNH CHO MINI GAMES =====
+float dinoY = 44, dinoVy = 0;
+int cactusX = 128, trexScore = 0;
+bool trexGameOver = false;
+
+int shipX = 60, bulletX = -10, bulletY = -10;
+bool bulletActive = false, spaceGameOver = false;
+uint8_t aliens[12]; 
+float alienBaseX = 10, alienBaseY = 10, alienDir = 0.5;
+float ballX = 64, ballY = 40, ballDx = 1.5, ballDy = -1.5;
+int paddleX = 54, pongScore = 0;
+bool pongGameOver = false;
+uint8_t bricks[15]; 
+
+unsigned long lastGameTick = 0;
+
+// ===== BIẾN DÀNH CHO BMO FACE =====
+int leftEyeX = 35, rightEyeX = 70, eyeY = 18, eyeWidth = 22, eyeHeight = 28;      
+int targetOffsetX = 0, targetOffsetY = 0, bmoOffsetX = 0, bmoOffsetY = 0; 
+int blinkState = 0;      
+unsigned long lastBlinkTime = 0, moveTime = 0, lastBmoTick = 0;
+bool isUwU = false;
+unsigned long uwuTimer = 0;
+int swipeState = 0; 
+unsigned long swipeStart = 0;
+bool isSnoring = false;
+float zzzY[3] = {0, 0, 0};
+float zzzX[3] = {0, 0, 0};
+
+// BỘ BITMAP MẶT LOPAKA
+static const unsigned char PROGMEM uwu_mouth_bmp[] = {0x80,0x60,0xc0,0x40,0x40,0x40,0x4c,0xc0,0x6e,0x80,0x3b,0x80};
+
+// ===== PHẦN CỨNG: CÒI & ĐỘ SÁNG =====
+void beep(int d = 40) { digitalWrite(BUZZER_PIN, HIGH); bOff = millis() + d; }
+
+void handleBuzzer() { 
+    if (!alarmRinging) { if (millis() > bOff) digitalWrite(BUZZER_PIN, LOW); } 
+    else {
+        if (millis() > buzzerTimer) {
+            flashState = !flashState; digitalWrite(BUZZER_PIN, flashState ? HIGH : LOW);
+            display.invertDisplay(flashState); buzzerTimer = millis() + 400; 
+        }
+    }
+}
+
+void applyBrightness(int level) {
+    int contrast = (level == 0) ? 1 : ((level == 1) ? 100 : 255);                
+    display.ssd1306_command(SSD1306_SETCONTRAST); display.ssd1306_command(contrast);
+}
+
+void drawCenteredText(const char* txt, int y, int size = 1) {
+    int16_t x1, y1; uint16_t w, h;
+    display.setTextSize(size); display.getTextBounds(txt, 0, 0, &x1, &y1, &w, &h);
+    display.setCursor((128 - w) / 2, y); display.print(txt);
+}
+
+// ===== LỚP XỬ LÝ NÚT CHẠM =====
+class TouchButton {
+    uint8_t p; bool ls, ip, longTriggered; unsigned long ps, lastRepeat; bool useLong;
+public:
+    TouchButton(uint8_t pin, bool hasLong) : p(pin), ls(false), ip(false), longTriggered(false), ps(0), lastRepeat(0), useLong(hasLong) {}
+    void init() { pinMode(p, INPUT); }
+    int check() {
+        if (millis() < 2000) return 0; 
+        int res = 0; bool r = digitalRead(p);
+        if (r && ls && ip && (millis() - ps > 12000)) return 0; 
+        if (r && !ls) { ps = millis(); lastRepeat = millis(); ip = true; longTriggered = false; if (!useLong) res = 1; beep(20); }
+        if (r && ls && ip) { 
+            if (useLong) { if (!longTriggered && (millis() - ps > 800)) { longTriggered = true; res = 2; beep(50); } } 
+            else { if (millis() - ps > 500) { if (millis() - lastRepeat > 120) { lastRepeat = millis(); res = 1; beep(10); } } }
+        }
+        if (!r && ls) { if (ip && useLong && !longTriggered) res = 1; ip = false; }
+        ls = r; return res;
+    }
+};
+
+TouchButton bL(BTN_L, false), bM(BTN_M, true), bR(BTN_R, false), bS(BTN_S, false);
+
+// ===== KHỞI TẠO GAMES =====
+void initTRex() { dinoY = 44; dinoVy = 0; cactusX = 128; trexScore = 0; trexGameOver = false; uiState = STATE_TREX; beep(100); }
+void initSpace() { 
+    shipX = 60; bulletActive = false; spaceGameOver = false; alienBaseX = 10; alienBaseY = 10; alienDir = 0.5;
+    for(int i=0; i<12; i++) aliens[i] = 1; 
+    uiState = STATE_SPACE; beep(100); 
+}
+void initPong() { 
+    ballX = 64; ballY = 40; ballDx = 1.5; ballDy = -1.5; paddleX = 54; pongScore = 0; pongGameOver = false;
+    for(int i=0; i<15; i++) bricks[i] = 1; 
+    uiState = STATE_PONG; beep(100); 
+}
+
+// ===== RENDER HỆ THỐNG MÀN HÌNH =====
+void renderUI() {
+    display.clearDisplay(); display.setTextColor(SSD1306_WHITE);
+    display.setTextWrap(false); 
+    
+    if(uiState == STATE_CLOCK) {
+        struct tm ti; getLocalTime(&ti);
+        if(!timeSynced) drawCenteredText("Waiting BLE...", 30);
+        else { 
+            char b[10]; sprintf(b, "%02d:%02d", ti.tm_hour, ti.tm_min); 
+            int16_t x1, y1; uint16_t w, h; 
+            display.setTextSize(3); display.getTextBounds(b, 0, 0, &x1, &y1, &w, &h); 
+            display.setCursor(((128 - w) / 2) + shiftX, 20 + shiftY); display.print(b); 
+            
+            display.setTextSize(1);
+            display.setCursor(90 + shiftX, 2 + shiftY);
+            display.printf("%.1f C", temp);
+            
+            const char* days[] = {"CN", "T2", "T3", "T4", "T5", "T6", "T7"};
+            display.setCursor(5 + shiftX, 54 + shiftY);
+            display.print(days[ti.tm_wday]);
+        }
+    }
+    else if(uiState == STATE_MENU) {
+        drawCenteredText("MENU", 0);
+        const char* n[] = {"NHIET DO", "DO SANG", "CAI DAT", "POMODORO", "HEN GIO", "PIXEL ART", "BMO FACE", "MINI GAMES", "BAO THUC", "BAM GIO"};
+        display.setTextSize(2); display.setCursor(0, 30); display.print("<"); display.setCursor(116, 30); display.print(">"); drawCenteredText(n[menuIdx], 34, 1); 
+    }
+    else if(uiState == STATE_ENV) { drawCenteredText("ENVIRONMENT", 0); display.setCursor(15, 25); display.printf("Temp: %.1f C", temp); display.setCursor(15, 45); display.printf("Humi: %.1f %%", humi); }
+    else if(uiState == STATE_LIGHT) { drawCenteredText("LIGHT", 0); display.setCursor(20, 25); display.printf("Volt: %.1fV", volt); display.drawRect(20, 45, 88, 10, 1); display.fillRect(22, 47, map(volt*100, 0, 330, 0, 84), 6, 1); }
+    else if(uiState == STATE_SETTINGS) { 
+        if (settingMode == 2) { display.drawRoundRect(14, 15, 100, 35, 4, SSD1306_WHITE); drawCenteredText("XAC NHAN?", 22, 1); drawCenteredText("L:Huy  R:Luu", 38, 1); } 
+        else {
+            drawCenteredText("SETTINGS", 0);
+            display.setCursor(10, 15); display.print(settingCursor == 0 ? (settingMode == 1 ? ">> BT: " : "> BT: ") : "  BT: "); display.print(((settingMode == 1 && settingCursor == 0) ? tempBtOn : btOn) ? "< ON >" : "< OFF >");
+            display.setCursor(10, 28); display.print(settingCursor == 1 ? (settingMode == 1 ? ">> Sleep: " : "> Sleep: ") : "  Sleep: "); display.print(((settingMode == 1 && settingCursor == 1) ? tempSleepOn : autoSleepOn) ? "< ON >" : "< OFF >");
+            const char* mList[] = {"< NONE >", "< POMO >", "< ART >", "< ALARM >", "< SLEEP >", "< GAME >", "< FACE >"};
+            display.setCursor(10, 41); display.print(settingCursor == 2 ? (settingMode == 1 ? ">> Phim S:" : "> Phim S:") : "  Phim S:"); display.print(mList[(settingMode == 1 && settingCursor == 2) ? tempMacro : macroAction]);
+            display.setCursor(10, 54); display.print(settingCursor == 3 ? "> Exit" : "  Exit");
+        }
+    }
+    else if(uiState == STATE_TIMER) { 
+        drawCenteredText("HEN GIO", 0);
+        if (!isTimerRunning) { char b[15]; sprintf(b, "< %02d >", timerSetMin); drawCenteredText(b, 25, 2); drawCenteredText("M: Start", 52, 1); } 
+        else { char b[10]; sprintf(b, "%02d:%02d", timerSec/60, timerSec%60); drawCenteredText(b, 20, 3); drawCenteredText("M: Cancel", 54, 1); }
+    }
+    else if(uiState == STATE_ART) { 
+        for (int i = 0; i < 40; i++) {
+            if (random(100) > 94) stars[i].b = !stars[i].b;
+            if (stars[i].b) { display.drawPixel(stars[i].x, stars[i].y, SSD1306_WHITE); if (i % 5 == 0) { display.drawPixel(stars[i].x - 1, stars[i].y, 1); display.drawPixel(stars[i].x + 1, stars[i].y, 1); display.drawPixel(stars[i].x, stars[i].y - 1, 1); display.drawPixel(stars[i].x, stars[i].y + 1, 1); } }
+        }
+    }
+    else if(uiState == STATE_POMO) {
+        drawCenteredText("POMODORO", 0);
+        if (!isPomoRunning && !pomoWaitingNext) {
+            display.setCursor(15, 20); display.print(pomoEditIdx == 0 ? "> Work:" : "  Work:"); display.printf("  < %02d >", pomoWork);
+            display.setCursor(15, 35); display.print(pomoEditIdx == 1 ? "> Break:" : "  Break:"); display.printf(" < %02d >", pomoBreak);
+            if (pomoEditIdx == 2) drawCenteredText("[ START ]", 52); else drawCenteredText("  START  ", 52);
+        } else {
+            display.setTextSize(2); drawCenteredText(isBreakTime ? "BREAK" : "WORK", 18, 1); 
+            char b[10]; sprintf(b, "%02d:%02d", pomoCurrentSec/60, pomoCurrentSec%60); drawCenteredText(b, 35, 2); 
+            display.setTextSize(1); 
+            if (pomoWaitingNext) { drawCenteredText("An de tiep tuc", 56, 1); } 
+            else if (isPomoPaused) {
+                display.fillRoundRect(20, 31, 88, 18, 4, SSD1306_BLACK); display.drawRoundRect(20, 31, 88, 18, 4, SSD1306_WHITE); 
+                drawCenteredText("DA TAM NGUNG", 36, 1); drawCenteredText("M: Resume", 56, 1);
+            } else { drawCenteredText("M: Pause", 56, 1); }
+        }
+    }
+    else if(uiState == STATE_BMO_FACE) {
+        if (isSnoring) {
+            display.drawLine(27 + bmoOffsetX, 31 + bmoOffsetY, 50 + bmoOffsetX, 31 + bmoOffsetY, SSD1306_WHITE);
+            display.drawLine(75 + bmoOffsetX, 31 + bmoOffsetY, 98 + bmoOffsetX, 31 + bmoOffsetY, SSD1306_WHITE);
+            for(int i=0; i<3; i++) { display.setTextSize(i == 1 ? 2 : 1); display.setCursor((int)zzzX[i] + bmoOffsetX/2, (int)zzzY[i]); display.print("Z"); }
+        } 
+        else if (isUwU) {
+            int lx = 26 + bmoOffsetX; int rx = 86 + bmoOffsetX; int ly = 24 + bmoOffsetY;
+            display.fillRoundRect(lx, ly, 16, 20, 6, SSD1306_WHITE); display.fillRoundRect(lx + 3, ly - 2, 10, 19, 4, SSD1306_BLACK); display.fillRect(lx, ly - 2, 16, 8, SSD1306_BLACK); 
+            display.fillRoundRect(rx, ly, 16, 20, 6, SSD1306_WHITE); display.fillRoundRect(rx + 3, ly - 2, 10, 19, 4, SSD1306_BLACK); display.fillRect(rx, ly - 2, 16, 8, SSD1306_BLACK);
+            display.drawBitmap(58 + bmoOffsetX, 44 + bmoOffsetY, uwu_mouth_bmp, 11, 6, SSD1306_WHITE);
+            display.fillRoundRect(lx - 10, ly + 14, 12, 5, 2, SSD1306_WHITE); display.fillRoundRect(rx + 14, ly + 14, 12, 5, 2, SSD1306_WHITE);
+        } 
+        else {
+            if (blinkState == 0) {
+                display.fillRoundRect(leftEyeX + bmoOffsetX, eyeY + bmoOffsetY, eyeWidth, eyeHeight, 5, SSD1306_WHITE);
+                display.fillRoundRect(rightEyeX + bmoOffsetX, eyeY + bmoOffsetY, eyeWidth, eyeHeight, 5, SSD1306_WHITE);
+            } else {
+                display.fillRect(leftEyeX + bmoOffsetX, eyeY + bmoOffsetY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
+                display.fillRect(rightEyeX + bmoOffsetX, eyeY + bmoOffsetY + eyeHeight / 2 - 2, eyeWidth, 4, SSD1306_WHITE);
+            }
+        }
+    }
+    else if(uiState == STATE_GAMES_MENU) {
+        drawCenteredText("CHOOSE GAME", 0);
+        display.setCursor(15, 20); display.print(gameIdx == 0 ? "> 1. T-REX" : "  1. T-REX");
+        display.setCursor(15, 35); display.print(gameIdx == 1 ? "> 2. SPACE" : "  2. SPACE");
+        display.setCursor(15, 50); display.print(gameIdx == 2 ? "> 3. PONG " : "  3. PONG ");
+    }
+    else if(uiState == STATE_ALARM) { 
+        drawCenteredText("BAO THUC", 0);
+        if (!alarmActive && alarmEditIdx < 3) {
+            display.setCursor(27, 18); display.printf("hour:  < %02d >", alarmHour);
+            display.setCursor(27, 32); display.printf("min:   < %02d >", alarmMin);
+            drawCenteredText("XAC NHAN", 50);
+            int cy = (alarmEditIdx == 0) ? 18 : (alarmEditIdx == 1 ? 32 : 50);
+            display.setCursor(15, cy); display.print(">");
+        } else if (alarmEditIdx == 3) {
+            drawCenteredText("LAP LAI HANG NGAY?", 20);
+            drawCenteredText("L: CO   R: KHONG", 40);
+        } else {
+            char b[15]; sprintf(b, "%02d:%02d", alarmHour, alarmMin);
+            display.setTextSize(3); drawCenteredText(b, 20, 3);
+            display.setTextSize(1);
+            drawCenteredText(alarmRepeat ? "(Hang ngay)" : "(Mot lan)", 45);
+            drawCenteredText("M: Cancel", 55);
+        }
+    }
+    else if(uiState == STATE_STOPWATCH) {
+        drawCenteredText("BAM GIO", 0);
+        unsigned long t = isSwRunning ? (millis() - swStartTime) : swElapsedTime;
+        int h = t / 3600000; int m = (t / 60000) % 60; int s = (t / 1000) % 60;
+        char b[15]; sprintf(b, "%02d:%02d:%02d", h, m, s);
+        display.setTextSize(2); drawCenteredText(b, 25, 2);
+        display.setTextSize(1);
+        if (isSwRunning) drawCenteredText("M: Pause", 50);
+        else drawCenteredText(t == 0 ? "M: Start" : "M:Resume  L/R:Reset", 50);
+    }
+    else if(uiState == STATE_TREX) {
+        display.drawLine(0, 54, 128, 54, SSD1306_WHITE); display.fillRect(10, (int)dinoY, 10, 10, SSD1306_WHITE); display.fillRect(cactusX, 44, 5, 10, SSD1306_WHITE); display.setCursor(0, 0); display.printf("Score: %d", trexScore);
+        if(trexGameOver) drawCenteredText("GAME OVER\nL/R: Re  Hold M: Exit", 20);
+    }
+    else if(uiState == STATE_SPACE) {
+        display.fillTriangle(shipX, 55, shipX-5, 63, shipX+5, 63, SSD1306_WHITE); 
+        if(bulletActive) display.fillRect(bulletX, bulletY, 2, 4, SSD1306_WHITE); 
+        bool won = true;
+        for(int i=0; i<12; i++) { if(aliens[i]) { won = false; display.fillRect(alienBaseX + (i % 4) * 20, alienBaseY + (i / 4) * 12, 8, 6, SSD1306_WHITE); } }
+        display.setCursor(0, 0); display.print("SPACE");
+        if(spaceGameOver) drawCenteredText("GAME OVER\nL/R: Re  Hold M: Exit", 20); else if (won) drawCenteredText("YOU WIN!\nL/R: Re  Hold M: Exit", 20);
+    }
+    else if(uiState == STATE_PONG) {
+        display.fillRect(paddleX, 58, 20, 4, SSD1306_WHITE); display.fillRect((int)ballX, (int)ballY, 3, 3, SSD1306_WHITE); 
+        bool won = true;
+        for(int i=0; i<15; i++) { if(bricks[i]) { won = false; display.fillRect((i % 5) * 25 + 2, (i / 5) * 8 + 12, 23, 6, SSD1306_WHITE); } }
+        display.setCursor(0, 0); display.printf("Score: %d", pongScore);
+        if(pongGameOver) drawCenteredText("GAME OVER\nL/R: Re  Hold M: Exit", 20); else if (won) drawCenteredText("YOU WIN!\nL/R: Re  Hold M: Exit", 20);
+    }
+
+    if (pendingSleepMacro) {
+        display.fillRoundRect(8, 15, 112, 35, 4, SSD1306_BLACK); display.drawRoundRect(8, 15, 112, 35, 4, SSD1306_WHITE); 
+        drawCenteredText("BMO SE NGU?", 22, 1); drawCenteredText("S:OK  L/M/R:Huy", 36, 1);
+    }
+    display.display();
+}
+
+// ===== BLUETOOTH CALLBACKS =====
+class MyServerCallbacks: public BLEServerCallbacks { void onDisconnect(BLEServer* pServer) { if (btOn && pAdvertising != NULL) { pAdvertising->start(); btStartTime = millis(); } } };
+class MyBLE : public BLECharacteristicCallbacks { void onWrite(BLECharacteristic *pC) { String v = pC->getValue(); int y,mo,d,h,mi,s; if (sscanf(v.c_str(), "SYNC_TIME:%d,%d,%d,%d,%d,%d", &y,&mo,&d,&h,&mi,&s) == 6) { struct tm t = {s, mi, h, d, mo-1, y-1900}; time_t tt = mktime(&t); struct timeval tv = {tt, 0}; settimeofday(&tv, NULL); timeSynced = true; beep(100); forceRedraw = true; } } };
+
+void setup() {
+    pref.begin("bmo", false);
+    btOn = true; 
+    autoSleepOn = pref.getBool("s", false); macroAction = pref.getInt("mac", 0); 
+    pomoWork = pref.getInt("pw", 25); pomoBreak = pref.getInt("pb", 5); timerSetMin = pref.getInt("tm", 5); 
+    alarmHour = pref.getInt("aH", 0); alarmMin = pref.getInt("aM", 0); alarmRepeat = pref.getBool("aR", false); alarmActive = pref.getBool("aA", false);
+
+    pinMode(BUZZER_PIN, OUTPUT); digitalWrite(BUZZER_PIN, LOW);
+    bL.init(); bM.init(); bR.init(); bS.init(); 
+    
+    // [TỐI ƯU CỰC MẠNH]: Tăng tốc độ giao tiếp màn hình lên 400kHz (Fast Mode)
+    Wire.begin(SDA_PIN, SCL_PIN); 
+    Wire.setClock(400000); 
+    
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C); dht.begin(); 
+    
+    display.ssd1306_command(SSD1306_SETCONTRAST); 
+    display.ssd1306_command(255); 
+    
+    BLEDevice::init("BMO-ESP32"); pServer = BLEDevice::createServer(); pServer->setCallbacks(new MyServerCallbacks()); 
+    BLEService *psv = pServer->createService(SERVICE_UUID);
+    BLECharacteristic *pch = psv->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_WRITE);
+    pch->setCallbacks(new MyBLE()); psv->start();
+    
+    pAdvertising = BLEDevice::getAdvertising(); pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true); pAdvertising->setMinPreferred(0x06); pAdvertising->setMinPreferred(0x12);
+    
+    if(btOn) { pAdvertising->start(); btStartTime = millis(); }
+
+    for(int i=0; i<40; i++) { stars[i].x = random(128); stars[i].y = random(64); }
+
+    display.clearDisplay(); display.setTextColor(SSD1306_WHITE); display.setTextWrap(false);
+    display.setTextSize(2); display.setCursor(46, 17); display.println("BMO");
+    display.setTextSize(1); display.setCursor(33, 39); display.println("by phuc v.1");
+    display.display();
+
+    delay(2000);
+
+    for (int i = 255; i >= 0; i -= 15) { display.ssd1306_command(SSD1306_SETCONTRAST); display.ssd1306_command(i); delay(40); }
+    display.clearDisplay(); display.display();
+    applyBrightness(1); delay(200); 
+
+    display.setTextSize(2); display.setCursor(47, 25); display.println("> -"); display.display();
+    digitalWrite(BUZZER_PIN, HIGH); delay(80); digitalWrite(BUZZER_PIN, LOW);
+    delay(100);
+    digitalWrite(BUZZER_PIN, HIGH); delay(120); digitalWrite(BUZZER_PIN, LOW);
+    delay(800); 
+}
+
+// ===== VÒNG LẶP CHÍNH =====
+void loop() {
+    handleBuzzer(); unsigned long currentMillis = millis();
+
+    static int currentMinuteTracker = -1;
+    if (timeSynced) {
+        struct tm ti; getLocalTime(&ti);
+        if (ti.tm_min != currentMinuteTracker) {
+            currentMinuteTracker = ti.tm_min;
+            // [CẬP NHẬT TỐI ƯU]: Chỉ ép vẽ lại màn hình đồng hồ khi phút thay đổi
+            if (uiState == STATE_CLOCK) forceRedraw = true;
+            
+            if (alarmActive && !alarmRinging && ti.tm_hour == alarmHour && ti.tm_min == alarmMin) {
+                alarmRinging = true;
+                if (!alarmRepeat) { alarmActive = false; pref.putBool("aA", false); }
+            }
+        }
+    }
+
+    if (uiState < STATE_GAMES_MENU && uiState != STATE_BMO_FACE) {
+        bool shouldInvert = (currentMillis > 1800000UL) && ((currentMillis % 1800000UL) < 60000UL);
+        if (shouldInvert != isInvertedMode && !alarmRinging) { isInvertedMode = shouldInvert; display.invertDisplay(isInvertedMode); }
+        
+        if (currentMillis - lastShiftTime > 30000UL) {
+            int newX, newY; bool valid;
+            do { valid = true; newX = random(-2, 3); newY = random(-2, 3); if (newX == prevX[0] && newY == prevY[0]) valid = false; if (newX == prevX[1] && newY == prevY[1]) valid = false; } while (!valid);
+            prevX[1] = prevX[0]; prevY[1] = prevY[0]; prevX[0] = newX; prevY[0] = newY; shiftX = newX; shiftY = newY; lastShiftTime = currentMillis; if (uiState == STATE_CLOCK) forceRedraw = true;
+        }
+
+        if (btOn && (currentMillis - btStartTime > BT_TIMEOUT)) { if (pServer != NULL && pServer->getConnectedCount() == 0) { btOn = false; if (pAdvertising != NULL) pAdvertising->stop(); forceRedraw = true; } }
+        
+        if (currentMillis - lastDhtRead > 3000 || lastDhtRead == 0) {
+            float t = dht.readTemperature(); float h = dht.readHumidity();
+            if (!isnan(t) && !isnan(h)) { temp = round(t * 10.0) / 10.0; humi = round(h * 10.0) / 10.0; } lastDhtRead = currentMillis; forceRedraw = true;
+        }
+    }
+
+    if (uiState < STATE_GAMES_MENU || uiState == STATE_SLEEP) {
+        if (currentMillis - lastLightRead > 1500 || lastLightRead == 0) {
+            volt = round((analogRead(LIGHT_PIN) * (3.3 / 4095.0)) * 10.0) / 10.0; 
+            lastLightRead = currentMillis; 
+            
+            int newBright = 1; 
+            if (volt < 0.05) newBright = 0; 
+            else if (volt >= 2.0) newBright = 2; 
+            
+            if (newBright != currentAutoBright && uiState != STATE_SLEEP) {
+                currentAutoBright = newBright; applyBrightness(currentAutoBright);
+            }
+
+            if (volt < 0.05) { 
+                if (!isDark) { isDark = true; darkStartTime = currentMillis; }
+                else if (currentMillis - darkStartTime > 60000UL) { 
+                    if (!(uiState == STATE_BMO_FACE && isSnoring) && uiState != STATE_SLEEP) {
+                        uiState = STATE_BMO_FACE; isSnoring = true; isUwU = false;
+                        zzzY[0] = 50; zzzX[0] = 60; zzzY[1] = 40; zzzX[1] = 68; zzzY[2] = 30; zzzX[2] = 75;
+                        forceRedraw = true;
+                    }
+                }
+            } else {
+                isDark = false;
+                if (volt > 0.1 && !manualSleepOverride) {
+                    if ((uiState == STATE_BMO_FACE && isSnoring) || uiState == STATE_SLEEP) {
+                        if (uiState == STATE_SLEEP) display.ssd1306_command(0xAF); 
+                        uiState = STATE_CLOCK; isSnoring = false; beep(50); 
+                        lastInteract = currentMillis; forceRedraw = true;
+                    }
+                }
+            }
+            if (uiState == STATE_LIGHT || uiState == STATE_ART) forceRedraw = true;
+        }
+    }
+
+    int sL = bL.check(), sM = bM.check(), sR = bR.check(), sS = bS.check();
+    bool rawL = digitalRead(BTN_L);
+    bool rawR = digitalRead(BTN_R);
+
+    if (uiState == STATE_BMO_FACE && !isSnoring) {
+        if (swipeState != 0 && (currentMillis - swipeStart > 1300)) swipeState = 0;
+        if (sL == 1) { swipeState = 1; swipeStart = currentMillis; } 
+        else if (sR == 1) { swipeState = 2; swipeStart = currentMillis; } 
+        else if (sM == 1) {
+            if (swipeState == 1 || swipeState == 2) { isUwU = true; uwuTimer = currentMillis; swipeState = 0; beep(80); }
+        }
+    }
+
+    if (sL || sM || sR || sS) { 
+        manualSleepOverride = false; lastInteract = currentMillis; darkStartTime = currentMillis; forceRedraw = true; 
+        if (uiState == STATE_SLEEP) { uiState = STATE_CLOCK; display.ssd1306_command(0xAF); pendingSleepMacro = false; beep(50); return; }
+        if (alarmRinging) { alarmRinging = false; display.invertDisplay(isInvertedMode); digitalWrite(BUZZER_PIN, LOW); beep(50); return; } 
+        if (isSnoring) { isSnoring = false; beep(60); return; } 
+    }
+
+    if (sS == 1) {
+        if (uiState == STATE_STOPWATCH) { isSwRunning = false; swElapsedTime = 0; } 
+        
+        if (pendingSleepMacro) { 
+            pendingSleepMacro = false; manualSleepOverride = true; uiState = STATE_SLEEP; display.ssd1306_command(0xAE); return; 
+        }
+        else if (uiState >= STATE_BMO_FACE) { uiState = STATE_CLOCK; } 
+        else {
+            if (macroAction == 1) { uiState = STATE_POMO; }
+            else if (macroAction == 2) { uiState = STATE_ART; }
+            else if (macroAction == 3) { uiState = STATE_ALARM; } 
+            else if (macroAction == 4) { pendingSleepMacro = true; forceRedraw = true; return; } 
+            else if (macroAction == 5) { uiState = STATE_GAMES_MENU; gameIdx = 0; }
+            else if (macroAction == 6) { uiState = STATE_BMO_FACE; } 
+        }
+    }
+    if (pendingSleepMacro && (sL || sM || sR)) { pendingSleepMacro = false; forceRedraw = true; return; }
+    if (uiState == STATE_MENU && (currentMillis - lastInteract > MENU_TIMEOUT)) { uiState = STATE_CLOCK; forceRedraw = true; }
+
+    if (sM == 2) { 
+        if (uiState == STATE_STOPWATCH) { isSwRunning = false; swElapsedTime = 0; } 
+        if (uiState == STATE_CLOCK) { }
+        else if (uiState == STATE_MENU) uiState = STATE_CLOCK;
+        else if (uiState >= STATE_TREX && uiState <= STATE_PONG) { uiState = STATE_GAMES_MENU; }
+        else { uiState = STATE_MENU; isPomoRunning = false; isPomoPaused = false; pomoWaitingNext = false; isTimerRunning = false; settingMode = 0; } 
+        return; 
+    }
+
+    switch (uiState) {
+        case STATE_CLOCK:
+            if (sL || sM || sR) uiState = STATE_MENU; break;
+        case STATE_MENU:
+            if (sL == 1) menuIdx = (menuIdx + 9) % 10; 
+            if (sR == 1) menuIdx = (menuIdx + 1) % 10;
+            if (sM == 1) { uiState = (UIState)(STATE_ENV + menuIdx); settingMode = 0; } break;
+            
+        case STATE_POMO: 
+            if (!isPomoRunning && !pomoWaitingNext) {
+                if (sM == 1) pomoEditIdx = (pomoEditIdx + 1) % 3;
+                if (pomoEditIdx == 0) { if (sL == 1 && pomoWork>1) pomoWork--; if (sR == 1 && pomoWork<99) pomoWork++; }
+                else if (pomoEditIdx == 1) { if (sL == 1 && pomoBreak>1) pomoBreak--; if (sR == 1 && pomoBreak<99) pomoBreak++; }
+                else if (pomoEditIdx == 2 && sM == 1) { 
+                    isPomoRunning = true; isPomoPaused = false; pomoWaitingNext = false; isBreakTime = false; 
+                    pomoCurrentSec = pomoWork * 60; pomoStartTime = currentMillis; 
+                    pref.putInt("pw", pomoWork); pref.putInt("pb", pomoBreak); 
+                }
+            } else if (pomoWaitingNext) {
+                if (sL == 1 || sR == 1 || sM == 1) { pomoWaitingNext = false; isPomoRunning = true; isPomoPaused = false; pomoStartTime = currentMillis; }
+            } else {
+                if (sM == 1) { isPomoPaused = !isPomoPaused; if (!isPomoPaused) pomoStartTime = currentMillis; forceRedraw = true; }
+                if (!isPomoPaused) {
+                    if (currentMillis - pomoStartTime >= 1000) { pomoCurrentSec--; pomoStartTime = currentMillis; forceRedraw = true; }
+                    if (pomoCurrentSec <= 0) { 
+                        alarmRinging = true; isPomoRunning = false; pomoWaitingNext = true; 
+                        isBreakTime = !isBreakTime; pomoCurrentSec = (isBreakTime ? pomoBreak : pomoWork) * 60; 
+                        forceRedraw = true;
+                    }
+                }
+            } break;
+            
+        case STATE_TIMER:
+            if (!isTimerRunning) {
+                if (sL == 1 && timerSetMin > 1) timerSetMin--; if (sR == 1 && timerSetMin < 99) timerSetMin++;
+                if (sM == 1) { isTimerRunning = true; timerSec = timerSetMin * 60; timerStartTime = currentMillis; pref.putInt("tm", timerSetMin); }
+            } else {
+                if (currentMillis - timerStartTime >= 1000) { timerSec--; timerStartTime = currentMillis; forceRedraw = true; }
+                if (sM == 1) isTimerRunning = false; if (timerSec <= 0) { isTimerRunning = false; alarmRinging = true; } 
+            } break;
+            
+        case STATE_SETTINGS:
+            if (settingMode == 0) {
+                if (sL == 1) settingCursor = (settingCursor + 3) % 4;
+                if (sR == 1) settingCursor = (settingCursor + 1) % 4;
+                if (sM == 1) { 
+                    if (settingCursor == 3) { uiState = STATE_MENU; settingCursor = 0; } 
+                    else { settingMode = 1; tempBtOn = btOn; tempSleepOn = autoSleepOn; tempMacro = macroAction; } 
+                }
+            } 
+            else if (settingMode == 1) {
+                if (sL == 1 || sR == 1) {
+                    if (settingCursor == 0) tempBtOn = !tempBtOn;
+                    if (settingCursor == 1) tempSleepOn = !tempSleepOn;
+                    if (settingCursor == 2) { if (sL == 1) tempMacro = (tempMacro + 6) % 7; if (sR == 1) tempMacro = (tempMacro + 1) % 7; } 
+                }
+                if (sM == 1) settingMode = 2; 
+            }
+            else if (settingMode == 2) {
+                if (sL == 1) { settingMode = 0; } 
+                if (sR == 1) { 
+                    btOn = tempBtOn; autoSleepOn = tempSleepOn; macroAction = tempMacro;
+                    pref.putBool("b", btOn); pref.putBool("s", autoSleepOn); pref.putInt("mac", macroAction);
+                    if (settingCursor == 0) { if(btOn && pAdvertising != NULL) { pAdvertising->start(); btStartTime = currentMillis; } else if (pAdvertising != NULL) pAdvertising->stop(); }
+                    settingMode = 0; 
+                }
+            } break;
+
+        case STATE_BMO_FACE:
+            if (currentMillis - lastBmoTick > 30) {
+                if (isSnoring) {
+                    targetOffsetX = 0; targetOffsetY = round(sin(currentMillis / 1000.0) * 4 * 10.0) / 10.0; 
+                    for(int i=0; i<3; i++) {
+                        zzzY[i] -= (i==1 ? 0.8 : 0.5); zzzX[i] += sin(zzzY[i]*0.1) * 0.5; 
+                        if (zzzY[i] < -10) { zzzY[i] = random(55, 65); zzzX[i] = 64 + random(-15, 15); }
+                    }
+                } 
+                else if (isUwU) {
+                    targetOffsetX = 0; targetOffsetY = 0; 
+                    if (currentMillis - uwuTimer > 3000) isUwU = false;
+                } 
+                else {
+                    if (currentMillis - lastBlinkTime > 4000 && blinkState == 0) { blinkState = 1; lastBlinkTime = currentMillis; } 
+                    else if (currentMillis - lastBlinkTime > 150 && blinkState == 1) { blinkState = 0; lastBlinkTime = currentMillis; }
+                    
+                    if (currentMillis - moveTime > random(1500, 3000) && blinkState == 0) {
+                        int movementType = random(0, 8);
+                        if (movementType == 0) { targetOffsetX = -10; targetOffsetY = 0; } else if (movementType == 1) { targetOffsetX = 10; targetOffsetY = 0; } else if (movementType == 2) { targetOffsetX = -10; targetOffsetY = -8; } else if (movementType == 3) { targetOffsetX = 10; targetOffsetY = -8; } else if (movementType == 4) { targetOffsetX = -10; targetOffsetY = 8; } else if (movementType == 5) { targetOffsetX = 10; targetOffsetY = 8; } else { targetOffsetX = 0; targetOffsetY = 0; }
+                        moveTime = currentMillis;
+                    }
+                }
+                bmoOffsetX += (targetOffsetX - bmoOffsetX) / 2; bmoOffsetY += (targetOffsetY - bmoOffsetY) / 2;
+                forceRedraw = true; lastBmoTick = currentMillis;
+            } break;
+            
+        case STATE_GAMES_MENU:
+            if (sL == 1) gameIdx = (gameIdx + 2) % 3;
+            if (sR == 1) gameIdx = (gameIdx + 1) % 3;
+            if (sM == 1) { if (gameIdx == 0) initTRex(); else if (gameIdx == 1) initSpace(); else initPong(); }
+            break;
+
+        case STATE_ALARM:
+            if (!alarmActive) {
+                if (alarmEditIdx < 3) {
+                    if (sM == 1) alarmEditIdx++;
+                    else if (alarmEditIdx == 0) { if (sL == 1) alarmHour = (alarmHour + 23) % 24; if (sR == 1) alarmHour = (alarmHour + 1) % 24; }
+                    else if (alarmEditIdx == 1) { if (sL == 1) alarmMin = (alarmMin + 59) % 60; if (sR == 1) alarmMin = (alarmMin + 1) % 60; }
+                } else if (alarmEditIdx == 3) {
+                    if (sL == 1 || sR == 1) {
+                        alarmRepeat = (sL == 1); alarmActive = true; alarmEditIdx = 0; 
+                        pref.putInt("aH", alarmHour); pref.putInt("aM", alarmMin); pref.putBool("aR", alarmRepeat); pref.putBool("aA", alarmActive);
+                    } else if (sM == 1) { alarmEditIdx = 0; } 
+                }
+            } else {
+                if (sM == 1) { alarmActive = false; pref.putBool("aA", false); } 
+            } break;
+
+        case STATE_STOPWATCH:
+            if (sM == 1) {
+                isSwRunning = !isSwRunning;
+                if (isSwRunning) swStartTime = currentMillis - swElapsedTime;
+                else swElapsedTime = currentMillis - swStartTime;
+            }
+            if (!isSwRunning && (sL == 1 || sR == 1)) { swElapsedTime = 0; forceRedraw = true;}
+            break;
+
+        case STATE_TREX:
+            if (sM == 1 && !trexGameOver && dinoY == 44) { dinoVy = -8; beep(10); }
+            if ((sL == 1 || sR == 1) && trexGameOver) initTRex();
+            if (currentMillis - lastGameTick > 40) {
+                if (!trexGameOver) {
+                    dinoVy += 0.8; dinoY += dinoVy; 
+                    if (dinoY >= 44) { dinoY = 44; dinoVy = 0; } 
+                    cactusX -= 3;
+                    if (cactusX < -5) { cactusX = 128; trexScore++; }
+                    if (cactusX < 20 && cactusX > 5 && dinoY > 34) { trexGameOver = true; beep(150); }
+                }
+                forceRedraw = true; lastGameTick = currentMillis;
+            } break;
+
+        case STATE_SPACE: {
+            bool spaceWon = true; for(int i=0; i<12; i++) if(aliens[i]) spaceWon = false;
+            if (sM == 1 && !spaceGameOver && !spaceWon && !bulletActive) { bulletActive = true; bulletX = shipX; bulletY = 55; beep(10); }
+            if ((sL == 1 || sR == 1) && (spaceGameOver || spaceWon)) initSpace();
+            if (currentMillis - lastGameTick > 40) {
+                if (!spaceGameOver && !spaceWon) {
+                    if (rawL && shipX > 5) shipX -= 3; 
+                    if (rawR && shipX < 123) shipX += 3;
+                    if (bulletActive) {
+                        bulletY -= 4; if (bulletY < 0) bulletActive = false;
+                        for (int i=0; i<12; i++) {
+                            if (aliens[i]) {
+                                int ax = alienBaseX + (i%4)*20; int ay = alienBaseY + (i/4)*12;
+                                if (bulletX > ax-2 && bulletX < ax+10 && bulletY > ay && bulletY < ay+8) { aliens[i] = 0; bulletActive = false; beep(20); break; }
+                            }
+                        }
+                    }
+                    alienBaseX += alienDir; if (alienBaseX > 45 || alienBaseX < 2) { alienDir = -alienDir; alienBaseY += 2; }
+                    if (alienBaseY > 35) { spaceGameOver = true; beep(150); } 
+                }
+                forceRedraw = true; lastGameTick = currentMillis;
+            } break;
+        }
+
+        case STATE_PONG: {
+            bool pongWon = true; for(int i=0; i<15; i++) if(bricks[i]) pongWon = false;
+            if ((sL == 1 || sR == 1) && (pongGameOver || pongWon)) initPong();
+            if (currentMillis - lastGameTick > 40) {
+                if (!pongGameOver && !pongWon) {
+                    if (rawL && paddleX > 0) paddleX -= 4; 
+                    if (rawR && paddleX < 108) paddleX += 4;
+                    ballX += ballDx; ballY += ballDy;
+                    if (ballX <= 0 || ballX >= 125) { ballDx = -ballDx; beep(10); } 
+                    if (ballY <= 0) { ballDy = -ballDy; beep(10); } 
+                    if (ballY >= 56 && ballX >= paddleX && ballX <= paddleX + 20) { ballDy = -abs(ballDy); beep(10); }
+                    if (ballY > 64) { pongGameOver = true; beep(150); } 
+                    for(int i=0; i<15; i++) {
+                        if (bricks[i]) {
+                            int bx = (i%5)*25 + 2; int by = (i/5)*8 + 12; 
+                            if (ballX > bx && ballX < bx+23 && ballY > by && ballY < by+6) { bricks[i] = 0; ballDy = -ballDy; pongScore++; beep(20); break; }
+                        }
+                    }
+                }
+                forceRedraw = true; lastGameTick = currentMillis;
+            } break;
+        }
+        case STATE_SLEEP: break;
+    }
+
+    if (autoSleepOn && uiState != STATE_BMO_FACE && uiState != STATE_SLEEP && uiState < STATE_TREX && uiState != STATE_GAMES_MENU && !(uiState == STATE_STOPWATCH && isSwRunning) && (currentMillis - lastInteract > SLEEP_TIMEOUT)) { 
+        manualSleepOverride = true; 
+        uiState = STATE_SLEEP; display.ssd1306_command(0xAE); 
+    }
+    
+    // [CẬP NHẬT TỐI ƯU]: Chỉ kết xuất tự động (Auto-Render) khi Màn hình sao hoặc Bấm giờ đang chạy
+    bool needAutoFrame = (uiState == STATE_ART || (uiState == STATE_STOPWATCH && isSwRunning));
+    
+    if (forceRedraw || (needAutoFrame && (currentMillis - lastFrameTime > 40))) {
+        if (uiState != STATE_SLEEP && !alarmRinging) renderUI(); 
+        lastFrameTime = currentMillis; forceRedraw = false;
+    }
+}
