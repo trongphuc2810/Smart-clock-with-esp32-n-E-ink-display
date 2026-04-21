@@ -812,11 +812,16 @@
             const cityId = document.getElementById('wifi-city-id').value;
             
             if(!ssid) return alert("Vui lòng nhập tên Wi-Fi!");
+            
+            // Lưu lại để lần sau không phải nhập
             localStorage.setItem('bmo-wifi-ssid', ssid);
             localStorage.setItem('bmo-wifi-pass', pass);
             localStorage.setItem('bmo-wifi-city-id', cityId);
-            const wifiStr = `SET_WIFI:${ssid},${pass},${cityId}`;
+            
+            // Gửi định dạng mới: WIFI:Tên_WiFi|Mật_khẩu|CityID
+            const wifiStr = `WIFI:${ssid}|${pass}|${cityId}`;
             await espChar.writeValue(new TextEncoder().encode(wifiStr));
+            
             const cityName = document.getElementById('wifi-city-id').options[document.getElementById('wifi-city-id').selectedIndex].text;
             log(`🚀 Đã gửi Wi-Fi & Vị trí: ${ssid} | ${cityName}`);
         }
