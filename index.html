@@ -66,7 +66,7 @@
             transition: background-color 0.5s, color 0.5s;
         }
 
-        /* Chấm tròn mờ (Ambient Glow Orbs) */
+        /* Ambient Glow Orb - Top aligned */
         .ambient-orb {
             position: fixed;
             width: 800px;
@@ -83,7 +83,6 @@
             animation: pulseOrb 8s infinite alternate ease-in-out;
             pointer-events: none;
         }
-        .ambient-orb-2 { display: none; }
         body.dark-mode .ambient-orb { opacity: 0.35; background: #ff2a5f; }
 
         @keyframes pulseOrb {
@@ -92,7 +91,6 @@
         }
 
         .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; position: relative; }
-        
         .header-wrapper { display: flex; justify-content: center; align-items: center; margin-bottom: 10px; position: relative; }
         
         h1 { 
@@ -129,7 +127,8 @@
             border: 1px solid var(--glass-border);
             transition: background-color 0.5s, border-color 0.5s, box-shadow 0.5s;
             transform: translateZ(0);
-            backface-visibility: hidden;
+            /* Bỏ overflow hidden để các phần tử như nút xóa lịch sử có thể nổi ra ngoài */
+            overflow: visible;
         }
         
         .card-title { 
@@ -140,7 +139,6 @@
             padding-bottom: 12px; 
             border-bottom: 1px solid var(--input-border);
             letter-spacing: -0.01em;
-            transition: color 0.5s, border-color 0.5s;
         }
 
         .btn { 
@@ -203,7 +201,7 @@
             box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15); 
         }
 
-        /* --- APPLE STYLE SLIDER TÙY BIẾN --- */
+        /* APPLE STYLE SLIDER */
         input[type="range"] { 
             -webkit-appearance: none;
             width: 100%;
@@ -228,9 +226,7 @@
             cursor: pointer;
             transition: transform 0.15s ease;
         }
-        input[type="range"]:active::-webkit-slider-thumb {
-            transform: scale(1.1); 
-        }
+        input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.1); }
 
         #status-console { 
             background: rgba(0, 0, 0, 0.75); 
@@ -260,7 +256,6 @@
             flex-direction: column; 
             align-items: center; 
             justify-content: center; 
-            transition: background 0.5s, border 0.5s;
         }
         #preview-canvas { 
             background: white; 
@@ -281,7 +276,7 @@
         .img-container img { display: block; max-width: 100%; }
         .cropper-actions { display: flex; gap: 12px; margin-top: 16px; }
 
-        /* Kéo Thả Overlay */
+        /* Drag & Drop Overlay */
         #drag-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -293,15 +288,29 @@
             align-items: center;
             border: 6px dashed var(--apple-blue);
             color: var(--apple-blue);
-            font-size: 2rem;
+            font-size: 1.8rem;
             font-weight: 700;
             pointer-events: none;
+            text-align: center;
+            padding: 20px;
         }
         body.drag-active #drag-overlay { display: flex; }
 
-        /* Lịch Sử Lưu Ảnh */
-        .history-wrapper { margin-top: 20px; width: 100%; }
-        .history-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; }
+        /* FIX LỖI LỊCH SỬ BỊ CHE KHUẤT */
+        .history-wrapper { 
+            margin-top: 20px; 
+            width: 100%; 
+            overflow: visible; /* Cho phép các thành phần bên trong nổi ra ngoài ranh giới thẻ cha */
+        }
+        .history-list { 
+            display: flex; 
+            gap: 20px; 
+            overflow-x: auto; 
+            /* Thêm padding phía trên cực lớn để không bị cắt nút xóa khi hover */
+            padding: 30px 15px 15px 15px; 
+            margin: -20px -15px 0 -15px; 
+            scrollbar-width: thin;
+        }
         .history-list::-webkit-scrollbar { height: 6px; }
         .history-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
         body.dark-mode .history-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
@@ -309,29 +318,50 @@
         .history-item {
             position: relative; flex: 0 0 auto;
             width: 106px; height: 52px;
-            border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer; 
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Hiệu ứng bung ra chuẩn Apple */
             background: white; 
+            border: 1px solid var(--input-border);
+            z-index: 1;
         }
-        .history-item img { width: 100%; height: 100%; object-fit: contain; border-radius: 6px; }
-        .history-item:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); border: 2px solid var(--apple-blue); }
+        .history-item img { width: 100%; height: 100%; object-fit: contain; border-radius: 9px; }
+        
+        .history-item:hover { 
+            transform: translateY(-10px) scale(1.15); /* Phóng to và nổi hẳn lên */
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2); 
+            border-color: var(--apple-blue);
+            z-index: 100; /* Đưa lên lớp trên cùng */
+        }
+        
         .btn-history-delete {
-            position: absolute; top: -6px; right: -6px;
-            background: var(--apple-red); color: white; border: none;
-            width: 20px; height: 20px; border-radius: 50%;
-            font-size: 14px; line-height: 20px; text-align: center;
-            cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            display: none; padding: 0;
+            position: absolute; 
+            top: -12px; /* Đẩy hẳn lên trên ảnh */
+            right: -12px;
+            background: var(--apple-red); 
+            color: white; 
+            border: 2px solid white; /* Tạo viền trắng cho nút xóa nổi bật */
+            width: 24px; 
+            height: 24px; 
+            border-radius: 50%;
+            font-size: 14px; 
+            font-weight: bold;
+            line-height: 20px; 
+            text-align: center;
+            cursor: pointer; 
+            display: none; 
+            padding: 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 101;
         }
         .history-item:hover .btn-history-delete { display: block; }
-        .btn-history-delete:hover { transform: scale(1.2); }
+        .btn-history-delete:hover { background: var(--apple-red-hover); transform: scale(1.1); }
 
-        hr { border: 0; border-top: 1px solid var(--input-border); margin: 16px 0; transition: border-color 0.5s; }
+        hr { border: 0; border-top: 1px solid var(--input-border); margin: 16px 0; }
 
         @media (max-width: 768px) {
             .grid-2 { grid-template-columns: 1fr; }
             body { padding: 20px 10px; }
-            .card { padding: 16px; }
             .header-wrapper { flex-direction: column; gap: 10px; }
             #btn-theme-toggle { position: static; }
         }
@@ -339,12 +369,8 @@
 </head>
 
 <body>
-    <!-- Lớp phủ kéo thả ảnh -->
-    <div id="drag-overlay">Thả Ảnh Vào Đây Để Chỉnh Sửa 📸</div>
-
-    <!-- Vệt sáng lơ lửng phía sau -->
+    <div id="drag-overlay">Thả Ảnh Vào Đây Để Chỉnh Sửa</div>
     <div class="ambient-orb"></div>
-    <div class="ambient-orb-2"></div>
 
     <div class="container">
         <div class="header-wrapper">
@@ -352,7 +378,6 @@
             <button id="btn-theme-toggle">Giao diện Tối</button>
         </div>
 
-        <!-- 1. KHU VỰC KẾT NỐI BLUETOOTH -->
         <div class="card grid-2">
             <div>
                 <div class="card-title">Mạch DA14585 (Gốc)</div>
@@ -372,29 +397,46 @@
                 <div class="form-group">
                     <button id="btn-esp-connect" class="btn btn-dark">Kết Nối ESP32-C3</button>
                 </div>
-                <div class="form-group mt-2">
-                    <label>Mã Lệnh Kèm Theo (Prefix):</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" id="esp-custom-code" class="form-control" placeholder="VD: SYNC_TIME:" value="SYNC_TIME:">
+                
+                <hr>
+                
+                <div class="form-group">
+                    <label>Đồng bộ thời gian:</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="esp-custom-code" class="form-control" placeholder="Prefix (Ví dụ: SYNC_TIME:)" value="SYNC_TIME:">
                         <button id="btn-esp-sync" class="btn btn-success" disabled style="white-space: nowrap;">Gửi Giờ</button>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Thiết lập Wi-Fi & Thời tiết:</label>
+                    <input type="text" id="wifi-ssid" class="form-control" placeholder="Tên Wi-Fi (SSID)" style="margin-bottom: 6px;">
+                    <input type="password" id="wifi-pass" class="form-control" placeholder="Mật khẩu Wi-Fi" style="margin-bottom: 6px;">
+                    
+                    <label style="font-size: 12px; margin-bottom: 2px;">Vị trí thành phố (City ID):</label>
+                    <select id="wifi-city-id" class="form-control">
+                        <option value="0">Vĩnh Long (ID: 0)</option>
+                        <option value="1">TP. Hồ Chí Minh (ID: 1)</option>
+                        <option value="2">Hà Nội (ID: 2)</option>
+                        <option value="3">Đà Nẵng (ID: 3)</option>
+                        <option value="4">Cần Thơ (ID: 4)</option>
+                    </select>
+                    
+                    <button id="btn-esp-wifi" class="btn btn-primary" disabled style="margin-top: 8px; width: 100%;">Gửi WiFi & Mã Thành Phố</button>
                 </div>
             </div>
         </div>
 
-        <!-- 2. XỬ LÝ NỘI DUNG & UPLOAD -->
         <div class="card">
             <div class="card-title">Tạo & Chỉnh Sửa Nội Dung</div>
-            
             <div class="flex-row">
-                <!-- Công cụ Tạo nội dung -->
                 <div class="flex-col">
                     <div class="form-group">
                         <label>Kích thước màn hình</label>
                         <select id="epd-size" class="form-control">
-                            <option value="212x104" selected>2.13" (212x104) - Mặc định</option>
+                            <option value="212x104" selected>2.13" (212x104)</option>
                             <option value="250x144">2.13" HD (250x144)</option>
-                            <option value="256x128">Mặc định cũ (256x128)</option>
+                            <option value="256x128">256x128</option>
                             <option value="296x128">2.9" (296x128)</option>
                             <option value="400x300">4.2" (400x300)</option>
                         </select>
@@ -408,12 +450,11 @@
                                 <option value="-apple-system, BlinkMacSystemFont, Arial, sans-serif">Cơ bản (Arial)</option>
                                 <option value="'Times New Roman', serif">Có chân (Times)</option>
                             </select>
-                            <input type="number" id="text-font-size" class="form-control" value="24" style="flex: 1;" placeholder="Cỡ chữ">
-                            <label style="display: flex; align-items: center; gap: 4px; color: var(--apple-text); font-size: 13px;">
+                            <input type="number" id="text-font-size" class="form-control" value="24" style="flex: 1;">
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 13px;">
                                 <input type="checkbox" id="text-bold" checked> Đậm
                             </label>
                         </div>
-                        <!-- Căn lề cho Văn bản thường -->
                         <div style="display: flex; gap: 8px; margin-top: 8px;">
                             <button id="align-left" class="btn btn-outline" style="flex: 1;">Trái</button>
                             <button id="align-center" class="btn btn-primary" style="flex: 1;">Giữa</button>
@@ -425,13 +466,10 @@
                     <hr>
 
                     <div class="form-group">
-                        <label>Tải ảnh lên (Có thể Kéo thả ảnh vào trang Web)</label>
+                        <label>Tải ảnh lên (Có thể kéo thả ảnh vào trang Web)</label>
                         <input type="file" id="image-upload" class="form-control" accept="image/*">
-                        
                         <div id="cropper-container">
-                            <div class="img-container">
-                                <img id="cropper-image" alt="Ảnh tải lên">
-                            </div>
+                            <div class="img-container"><img id="cropper-image"></div>
                             <div class="cropper-actions">
                                 <button id="btn-rotate-left" class="btn btn-outline" style="flex: 1;">Xoay Trái</button>
                                 <button id="btn-rotate-right" class="btn btn-outline" style="flex: 1;">Xoay Phải</button>
@@ -443,7 +481,7 @@
                     <div class="form-group">
                         <label>Tạo Mã QR</label>
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" id="qr-input" class="form-control" placeholder="Nhập liên kết hoặc văn bản...">
+                            <input type="text" id="qr-input" class="form-control" placeholder="Nội dung QR...">
                             <button id="btn-add-qr" class="btn btn-outline">Tạo QR</button>
                         </div>
                     </div>
@@ -451,13 +489,11 @@
                     <hr>
 
                     <div class="form-group">
-                        <label>Thuật toán Khử Răng Cưa (Dithering)</label>
+                        <label>Bộ lọc Khử Răng Cưa (Dithering)</label>
                         <select id="epd-dither" class="form-control">
-                            <option value="floydsteinberg" selected>Đen Trắng - Floyd-Steinberg</option>
-                            <option value="atkinson">Đen Trắng - Atkinson</option>
-                            <option value="bayer">Đen Trắng - Bayer</option>
-                            <option value="none">Đen Trắng - Không khử (Threshold)</option>
-                            <option value="bwr_floydsteinberg">Đỏ/Đen/Trắng - Floyd-Steinberg</option>
+                            <option value="floydsteinberg" selected>Floyd-Steinberg</option>
+                            <option value="atkinson">Atkinson</option>
+                            <option value="none">Threshold (Không khử)</option>
                         </select>
                     </div>
 
@@ -470,37 +506,22 @@
                         <input type="range" id="adj-bright" min="-100" max="100" value="0">
                     </div>
                     <div class="form-group">
-                        <label>Độ tương phản: <span id="val-contrast">100</span></label>
-                        <input type="range" id="adj-contrast" min="0" max="200" value="100">
-                    </div>
-                    <div class="form-group">
-                        <label>Cường độ Dithering: <span id="val-diffusion">50</span></label>
-                        <input type="range" id="diffusion" min="0" max="100" value="50">
-                    </div>
-                    <div class="form-group">
-                        <label>Độ trễ gửi lệnh (ms): <span id="val-interval">20</span></label>
+                        <label>Độ trễ gửi (ms): <span id="val-interval">20</span></label>
                         <input type="range" id="confirmInterval" min="0" max="100" value="20">
                     </div>
                 </div>
 
-                <!-- Preview & Upload & History -->
                 <div class="flex-col">
                     <label style="font-weight: 500; font-size: 13px; color: var(--apple-text-secondary);">Kết Quả Xem Trước</label>
                     <div class="preview-box">
                         <canvas id="preview-canvas" width="212" height="104"></canvas>
-                        
-                        <button id="btn-upload-eink" class="btn btn-success" style="width: 100%; margin-top: 24px; font-size: 15px; padding: 14px;" disabled>
-                            🚀 Cập Nhật E-ink
-                        </button>
-                        
-                        <div class="progress-container">
-                            <div id="upload-progress" class="progress-bar"></div>
-                        </div>
+                        <button id="btn-upload-eink" class="btn btn-success" style="width: 100%; margin-top: 24px;" disabled>Cập Nhật E-ink</button>
+                        <div class="progress-container"><div id="upload-progress" class="progress-bar"></div></div>
                     </div>
 
                     <div class="history-wrapper">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <label style="font-weight: 500; font-size: 13px; color: var(--apple-text-secondary);">Lịch sử ảnh (Tối đa 5)</label>
+                            <label style="font-weight: 500; font-size: 13px; color: var(--apple-text-secondary);">Lịch sử ảnh</label>
                             <button id="btn-save-history" class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;">Lưu nhanh</button>
                         </div>
                         <div id="history-gallery" class="history-list"></div>
@@ -509,7 +530,6 @@
             </div>
         </div>
 
-        <!-- 3. CONSOLE & HEX -->
         <div class="card grid-2">
             <div>
                 <div class="card-title">Console Log</div>
@@ -525,16 +545,13 @@
 
     <script>
         function R4(val) { return Math.round(val * 10000) / 10000; }
+        function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
 
         function initTheme() {
             const themeBtn = document.getElementById('btn-theme-toggle');
             if(!themeBtn) return;
-            
             const body = document.body;
-            if (localStorage.getItem('bmo-theme') === 'dark') {
-                body.classList.add('dark-mode');
-                themeBtn.textContent = 'Giao diện Sáng';
-            }
+            if (localStorage.getItem('bmo-theme') === 'dark') { body.classList.add('dark-mode'); themeBtn.textContent = 'Giao diện Sáng'; }
             themeBtn.onclick = () => {
                 body.classList.toggle('dark-mode');
                 const isDark = body.classList.contains('dark-mode');
@@ -545,17 +562,17 @@
 
         function updateSliderGradient(input) {
             if(!input) return;
-            const min = parseFloat(input.min) || 0;
-            const max = parseFloat(input.max) || 100;
-            const val = parseFloat(input.value);
+            const min = parseFloat(input.min) || 0, max = parseFloat(input.max) || 100, val = parseFloat(input.value);
             const percent = ((val - min) / (max - min)) * 100;
             input.style.backgroundSize = `calc(${percent}% + (${14 - percent * 0.28}px)) 100%`;
         }
 
-        document.querySelectorAll('input[type="range"]').forEach(input => {
-            updateSliderGradient(input);
-            input.addEventListener('input', (e) => updateSliderGradient(e.target));
-        });
+        function setupSliders() {
+            document.querySelectorAll('input[type="range"]').forEach(input => {
+                updateSliderGradient(input);
+                input.addEventListener('input', (e) => updateSliderGradient(e.target));
+            });
+        }
 
         let epdConfig = { w: 212, h: 104 }; 
         const canvasPreview = document.getElementById('preview-canvas');
@@ -563,517 +580,371 @@
         const canvasSource = document.createElement('canvas'); 
         canvasSource.width = 212; canvasSource.height = 104;
         const ctxS = canvasSource.getContext('2d', { willReadFrequently: true });
-
         const consoleLog = document.getElementById('status-console');
         const hexOutput = document.getElementById('hex-output');
-        const uploadProgress = document.getElementById('upload-progress');
         let cropper = null;
+        let currentTextAlign = 'center'; 
 
-        function log(msg) {
-            if(!consoleLog) return;
-            consoleLog.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
-            consoleLog.scrollTop = consoleLog.scrollHeight;
+        function log(msg) { 
+            if(consoleLog) { 
+                consoleLog.textContent += `\n[${new Date().toLocaleTimeString()}] ${msg}`; 
+                consoleLog.scrollTop = consoleLog.scrollHeight; 
+            } 
         }
         function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-        let currentTextAlign = 'center'; 
-
-        // ================= LỊCH SỬ ẢNH (LOCAL STORAGE) =================
-        const MAX_HISTORY = 5;
-
-        function loadHistory() {
-            const history = JSON.parse(localStorage.getItem('eink_history') || '[]');
-            renderHistoryUI(history);
-        }
-
+        function loadHistory() { renderHistoryUI(JSON.parse(localStorage.getItem('eink_history') || '[]')); }
         function saveToHistory() {
             if(!canvasPreview) return;
             const dataUrl = canvasPreview.toDataURL('image/png');
             let history = JSON.parse(localStorage.getItem('eink_history') || '[]');
             if (history.length > 0 && history[0].dataUrl === dataUrl) return;
-
-            history.unshift({ id: Date.now(), dataUrl: dataUrl, width: epdConfig.w, height: epdConfig.h });
-            if (history.length > MAX_HISTORY) history.pop();
-
+            history.unshift({ id: Date.now(), dataUrl, width: epdConfig.w, height: epdConfig.h });
+            if (history.length > 5) history.pop();
             localStorage.setItem('eink_history', JSON.stringify(history));
             renderHistoryUI(history);
         }
-
         function renderHistoryUI(history) {
             const container = document.getElementById('history-gallery');
             if(!container) return;
             container.innerHTML = '';
-            history.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = 'history-item';
+            history.forEach(item => {
+                const div = document.createElement('div'); div.className = 'history-item';
                 div.innerHTML = `<img src="${item.dataUrl}"><button class="btn-history-delete" onclick="deleteHistory(${item.id}, event)">×</button>`;
-                div.querySelector('img').onclick = () => loadFromHistory(item);
-                container.appendChild(div);
+                div.querySelector('img').onclick = () => loadFromHistory(item); container.appendChild(div);
             });
         }
-
-        function deleteHistory(id, event) {
-            event.stopPropagation();
-            let history = JSON.parse(localStorage.getItem('eink_history') || '[]');
-            history = history.filter(item => item.id !== id);
-            localStorage.setItem('eink_history', JSON.stringify(history));
-            renderHistoryUI(history);
-        }
-
+        window.deleteHistory = (id, event) => { 
+            event.stopPropagation(); 
+            let history = JSON.parse(localStorage.getItem('eink_history') || '[]').filter(i => i.id !== id); 
+            localStorage.setItem('eink_history', JSON.stringify(history)); 
+            renderHistoryUI(history); 
+        };
         function loadFromHistory(item) {
-            epdConfig.w = item.width; epdConfig.h = item.height;
-            const elEpdSize = document.getElementById('epd-size');
-            if(elEpdSize) elEpdSize.value = `${item.width}x${item.height}`;
+            epdConfig.w = item.width; epdConfig.h = item.height; 
+            const epdSizeSelect = document.getElementById('epd-size');
+            if(epdSizeSelect) epdSizeSelect.value = `${item.width}x${item.height}`;
             if(canvasPreview) { canvasPreview.width = item.width; canvasPreview.height = item.height; }
-            if(canvasSource) { canvasSource.width = item.width; canvasSource.height = item.height; }
-            const img = new Image();
+            canvasSource.width = item.width; canvasSource.height = item.height;
+            const img = new Image(); 
             img.onload = () => { 
                 if(ctxS) { ctxS.clearRect(0, 0, item.width, item.height); ctxS.drawImage(img, 0, 0); }
                 processImage(); 
-            };
+            }; 
             img.src = item.dataUrl;
         }
 
-        // ================= KÉO THẢ ẢNH =================
         function initDragAndDrop() {
-            const dropZone = document.body;
             let dragCounter = 0;
-            dropZone.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; document.body.classList.add('drag-active'); });
-            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) document.body.classList.remove('drag-active'); });
-            dropZone.addEventListener('dragover', (e) => e.preventDefault());
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault(); dragCounter = 0; document.body.classList.remove('drag-active');
-                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    if (e.dataTransfer.files[0].type.startsWith('image/')) loadImageToCropper(e.dataTransfer.files[0]);
-                }
+            document.body.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; document.body.classList.add('drag-active'); });
+            document.body.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) document.body.classList.remove('drag-active'); });
+            document.body.addEventListener('dragover', (e) => e.preventDefault());
+            document.body.addEventListener('drop', (e) => { 
+                e.preventDefault(); dragCounter = 0; document.body.classList.remove('drag-active'); 
+                if (e.dataTransfer.files.length > 0 && e.dataTransfer.files[0].type.startsWith('image/')) loadImageToCropper(e.dataTransfer.files[0]); 
             });
         }
-
         function loadImageToCropper(file) {
-            const url = URL.createObjectURL(file);
-            const imgElement = document.getElementById('cropper-image');
-            if(!imgElement) return;
-            imgElement.onload = () => {
-                if (cropper) cropper.destroy();
-                cropper = new Cropper(imgElement, { aspectRatio: R4(epdConfig.w / epdConfig.h), viewMode: 1, autoCropArea: 1 });
+            const url = URL.createObjectURL(file), img = document.getElementById('cropper-image');
+            if(!img) return;
+            img.onload = () => { 
+                if (cropper) cropper.destroy(); 
+                cropper = new Cropper(img, { aspectRatio: R4(epdConfig.w / epdConfig.h), viewMode: 1, autoCropArea: 1 }); 
             };
-            imgElement.src = url;
-            const cropperContainer = document.getElementById('cropper-container');
-            if(cropperContainer) cropperContainer.style.display = 'block';
+            img.src = url; 
+            const container = document.getElementById('cropper-container');
+            if(container) container.style.display = 'block';
         }
-
-        // ================= KHỞI TẠO & SỰ KIỆN =================
-        function initEvents() {
-            const elEpdSize = document.getElementById('epd-size');
-            if(elEpdSize) {
-                elEpdSize.addEventListener('change', (e) => {
-                    const [w, h] = e.target.value.split('x').map(Number);
-                    epdConfig.w = w; epdConfig.h = h;
-                    if(canvasPreview) { canvasPreview.width = w; canvasPreview.height = h; }
-                    if(canvasSource) { canvasSource.width = w; canvasSource.height = h; }
-                    if(cropper) cropper.setAspectRatio(R4(w / h));
-                    if(ctxS) { ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, w, h); }
-                    processImage();
-                    log(`Đã đổi kích thước màn hình sang ${w}x${h}`);
-                });
-            }
-
-            const imgUpload = document.getElementById('image-upload');
-            if(imgUpload) {
-                imgUpload.addEventListener('change', e => {
-                    if (e.target.files.length > 0) loadImageToCropper(e.target.files[0]);
-                });
-            }
-
-            const btnRotL = document.getElementById('btn-rotate-left');
-            if(btnRotL) btnRotL.onclick = () => { if (cropper) cropper.rotate(-90); };
-            
-            const btnRotR = document.getElementById('btn-rotate-right');
-            if(btnRotR) btnRotR.onclick = () => { if (cropper) cropper.rotate(90); };
-
-            const btnCrop = document.getElementById('btn-crop');
-            if(btnCrop) {
-                btnCrop.onclick = () => {
-                    if(!cropper) return;
-                    const cropped = cropper.getCroppedCanvas({ width: epdConfig.w, height: epdConfig.h });
-                    if(ctxS) {
-                        ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
-                        ctxS.drawImage(cropped, 0, 0, epdConfig.w, epdConfig.h);
-                    }
-                    const cropContainer = document.getElementById('cropper-container');
-                    if(cropContainer) cropContainer.style.display = 'none';
-                    cropper.destroy(); cropper = null;
-                    if(imgUpload) imgUpload.value = '';
-                    processImage();
-                };
-            }
-
-            const btnLeft = document.getElementById('align-left');
-            const btnCenter = document.getElementById('align-center');
-            const btnRight = document.getElementById('align-right');
-            
-            function updateAlignUI() {
-                [btnLeft, btnCenter, btnRight].forEach(b => { if(b) { b.classList.remove('btn-primary'); b.classList.add('btn-outline'); } });
-                if(currentTextAlign === 'left' && btnLeft) { btnLeft.classList.remove('btn-outline'); btnLeft.classList.add('btn-primary'); }
-                if(currentTextAlign === 'center' && btnCenter) { btnCenter.classList.remove('btn-outline'); btnCenter.classList.add('btn-primary'); }
-                if(currentTextAlign === 'right' && btnRight) { btnRight.classList.remove('btn-outline'); btnRight.classList.add('btn-primary'); }
-            }
-
-            if(btnLeft) btnLeft.onclick = () => { currentTextAlign = 'left'; updateAlignUI(); };
-            if(btnCenter) btnCenter.onclick = () => { currentTextAlign = 'center'; updateAlignUI(); };
-            if(btnRight) btnRight.onclick = () => { currentTextAlign = 'right'; updateAlignUI(); };
-
-            const btnAddText = document.getElementById('btn-add-text');
-            if(btnAddText) {
-                btnAddText.onclick = () => {
-                    const textArea = document.getElementById('text-input-area');
-                    if(!textArea) return;
-                    const text = textArea.value.trim();
-                    if(!text) return alert("Vui lòng nhập văn bản!");
-                    const fontSizeEl = document.getElementById('text-font-size');
-                    const fontFamEl = document.getElementById('text-font-family');
-                    const fontBoldEl = document.getElementById('text-bold');
-
-                    const fontSize = parseInt(fontSizeEl ? fontSizeEl.value : 24) || 24;
-                    const fontName = fontFamEl ? fontFamEl.value : 'Arial';
-                    const isBold = fontBoldEl ? fontBoldEl.checked : false;
-
-                    if(ctxS) {
-                        ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
-                        ctxS.fillStyle = 'black';
-                        ctxS.font = `${isBold ? 'bold' : 'normal'} ${fontSize}px ${fontName}`;
-                        ctxS.textBaseline = 'middle';
-
-                        const lines = text.split('\n');
-                        const lineHeight = fontSize * 1.3;
-                        const totalHeight = lines.length * lineHeight;
-                        let startY = (epdConfig.h - totalHeight) / 2 + lineHeight / 2;
-
-                        lines.forEach(line => {
-                            if (currentTextAlign === 'center') {
-                                ctxS.textAlign = 'center';
-                                ctxS.fillText(line, epdConfig.w / 2, startY);
-                            } else if (currentTextAlign === 'left') {
-                                ctxS.textAlign = 'left';
-                                ctxS.fillText(line, 10, startY); 
-                            } else {
-                                ctxS.textAlign = 'right';
-                                ctxS.fillText(line, epdConfig.w - 10, startY); 
-                            }
-                            startY += lineHeight;
-                        });
-                    }
-                    processImage();
-                };
-            }
-
-            const btnAddQr = document.getElementById('btn-add-qr');
-            if(btnAddQr) {
-                btnAddQr.onclick = () => {
-                    const qrInput = document.getElementById('qr-input');
-                    if(!qrInput) return;
-                    const text = qrInput.value;
-                    if(!text) return;
-                    const qrDiv = document.createElement('div');
-                    new QRCode(qrDiv, { text: text, width: epdConfig.h, height: epdConfig.h, colorDark: "#000", colorLight: "#fff", correctLevel: QRCode.CorrectLevel.L });
-                    setTimeout(() => {
-                        const canvas = qrDiv.querySelector('canvas');
-                        if(canvas && ctxS) {
-                            ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
-                            ctxS.drawImage(canvas, R4((epdConfig.w - epdConfig.h) / 2), 0, epdConfig.h, epdConfig.h);
-                            processImage();
-                        }
-                    }, 100);
-                };
-            }
-
-            ['thresh', 'bright', 'contrast'].forEach(id => {
-                const el = document.getElementById(`adj-${id}`);
-                if(el) {
-                    el.addEventListener('input', e => {
-                        const valEl = document.getElementById(`val-${id}`);
-                        if(valEl) valEl.textContent = e.target.value; 
-                        processImage();
-                    });
-                }
-            });
-            
-            const elDiff = document.getElementById('diffusion');
-            if(elDiff) {
-                elDiff.addEventListener('input', e => { 
-                    const v = document.getElementById('val-diffusion');
-                    if(v) v.textContent = e.target.value; 
-                    processImage(); 
-                });
-            }
-            
-            const elConf = document.getElementById('confirmInterval');
-            if(elConf) {
-                elConf.addEventListener('input', e => {
-                    const v = document.getElementById('val-interval');
-                    if(v) v.textContent = e.target.value;
-                });
-            }
-
-            const elDither = document.getElementById('epd-dither');
-            if(elDither) elDither.addEventListener('change', processImage);
-
-            const btnGenHex = document.getElementById('btn-generate-hex');
-            if(btnGenHex) btnGenHex.onclick = generateHex;
-            
-            const btnSaveHist = document.getElementById('btn-save-history');
-            if(btnSaveHist) btnSaveHist.onclick = saveToHistory;
-        }
-
-        // ================= XỬ LÝ ẢNH & DITHERING =================
-        function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
 
         function processImage() {
-            if(!ctxP || !canvasSource) return;
-            const w = epdConfig.w; const h = epdConfig.h;
-            ctxP.drawImage(canvasSource, 0, 0);
+            if(!ctxP || !canvasSource) return; 
+            const w = epdConfig.w, h = epdConfig.h;
+            ctxP.drawImage(canvasSource, 0, 0); 
             const imgData = ctxP.getImageData(0, 0, w, h);
             const data = imgData.data;
-            const b = document.getElementById('adj-bright');
-            const c = document.getElementById('adj-contrast');
-            const bright = parseInt(b ? b.value : 0);
-            const contrast = parseInt(c ? c.value : 100);
-            const bF = R4(bright / 100); const cF = R4(contrast / 100); const cAdj = R4((1 - cF) * 128);
-
-            if(bright !== 0 || contrast !== 100) {
-                for (let i = 0; i < data.length; i += 4) {
-                    let r = data[i], g = data[i+1], b = data[i+2];
-                    if(contrast !== 100) { r = R4(r * cF + cAdj); g = R4(g * cF + cAdj); b = R4(b * cF + cAdj); }
-                    if(bright !== 0) { r = R4(r + 255 * bF); g = R4(g + 255 * bF); b = R4(b + 255 * bF); }
-                    data[i] = clamp(r, 0, 255); data[i+1] = clamp(g, 0, 255); data[i+2] = clamp(b, 0, 255);
-                }
-            }
-
-            const elDither = document.getElementById('epd-dither');
-            const mode = elDither ? elDither.value : 'floydsteinberg';
-            const elThresh = document.getElementById('adj-thresh');
-            const thresh = parseInt(elThresh ? elThresh.value : 128);
-            const elDiff = document.getElementById('diffusion');
-            const diff = R4(parseInt(elDiff ? elDiff.value : 50) / 100);
             
-            const addErr = (ix, err, f) => {
-                if(ix >= 0 && ix < data.length) {
-                    let v = R4(err * f); data[ix] = clamp(data[ix]+v,0,255); data[ix+1] = clamp(data[ix+1]+v,0,255); data[ix+2] = clamp(data[ix+2]+v,0,255);
-                }
-            };
+            const brightEl = document.getElementById('adj-bright');
+            const bright = brightEl ? parseInt(brightEl.value) : 0;
+            const bF = R4(bright / 100);
 
-            if (mode === 'floydsteinberg' || mode === 'bwr_floydsteinberg') {
+            if(bright !== 0) { 
+                for (let i = 0; i < data.length; i += 4) { 
+                    data[i] = clamp(data[i]+255*bF,0,255); 
+                    data[i+1] = clamp(data[i+1]+255*bF,0,255); 
+                    data[i+2] = clamp(data[i+2]+255*bF,0,255); 
+                } 
+            }
+
+            const ditherEl = document.getElementById('epd-dither');
+            const mode = ditherEl ? ditherEl.value : 'floydsteinberg';
+            const threshEl = document.getElementById('adj-thresh');
+            const thresh = threshEl ? parseInt(threshEl.value) : 128;
+
+            if (mode === 'floydsteinberg') {
                 for (let y = 0; y < h; y++) {
                     for (let x = 0; x < w; x++) {
-                        const idx = (y * w + x) * 4;
-                        const gray = R4(0.299*data[idx] + 0.587*data[idx+1] + 0.114*data[idx+2]);
-                        const newP = gray < thresh ? 0 : 255; const err = R4((gray - newP) * diff);
-                        if (mode === 'bwr_floydsteinberg' && data[idx] > data[idx+1]*1.5 && data[idx] > data[idx+2]*1.5 && data[idx] > thresh) {
-                            data[idx] = 255; data[idx+1] = 0; data[idx+2] = 0;
-                        } else {
-                            data[idx] = data[idx+1] = data[idx+2] = newP;
-                            if (x+1 < w) addErr(idx+4, err, R4(7/16));
-                            if (y+1 < h) {
-                                if (x-1 >= 0) addErr(idx+w*4-4, err, R4(3/16)); addErr(idx+w*4, err, R4(5/16)); if (x+1 < w) addErr(idx+w*4+4, err, R4(1/16));
-                            }
-                        }
+                        const i = (y * w + x) * 4;
+                        const gray = R4(0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]);
+                        const newP = gray < thresh ? 0 : 255;
+                        const err = R4(gray - newP);
+                        data[i] = data[i+1] = data[i+2] = newP;
+                        if (x+1 < w) { const next = i+4; data[next] = clamp(data[next]+err*7/16,0,255); }
                     }
                 }
-            } else if (mode === 'atkinson') {
-                for (let y = 0; y < h; y++) {
-                    for (let x = 0; x < w; x++) {
-                        const idx = (y * w + x) * 4; const gray = R4(0.299*data[idx] + 0.587*data[idx+1] + 0.114*data[idx+2]);
-                        const newP = gray < thresh ? 0 : 255; const err = R4((gray - newP) * diff);
-                        data[idx] = data[idx+1] = data[idx+2] = newP;
-                        if (x+1 < w) addErr(idx+4, err, R4(1/8)); if (x+2 < w) addErr(idx+8, err, R4(1/8));
-                        if (y+1 < h) { if (x-1 >= 0) addErr(idx+w*4-4, err, R4(1/8)); addErr(idx+w*4, err, R4(1/8)); if (x+1 < w) addErr(idx+w*4+4, err, R4(1/8)); }
-                        if (y+2 < h) addErr(idx+w*8, err, R4(1/8));
-                    }
-                }
-            } else if (mode === 'none') {
-                for (let i = 0; i < data.length; i += 4) {
-                    const gray = R4(0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]);
-                    const v = gray < thresh ? 0 : 255; data[i] = data[i+1] = data[i+2] = v;
+            } else if (mode !== 'none') {
+                 for (let i = 0; i < data.length; i += 4) { 
+                    const g = R4(0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]); 
+                    const v = g < thresh ? 0 : 255; 
+                    data[i] = data[i+1] = data[i+2] = v; 
                 }
             }
-            ctxP.putImageData(imgData, 0, 0);
+            
+            ctxP.putImageData(imgData, 0, 0); 
             const btnUpload = document.getElementById('btn-upload-eink');
-            if (btnUpload) btnUpload.disabled = false;
+            if(btnUpload) btnUpload.disabled = false;
         }
 
-        // ================= XUẤT HEX & TRUYỀN BLUETOOTH =================
-        function hexToBytes(hex) { var bytes = []; for (let c = 0; c < hex.length; c += 2) bytes.push(parseInt(hex.substr(c, 2), 16)); return new Uint8Array(bytes); }
-        function bytesToHex(data) { return new Uint8Array(data).reduce(function (memo, i) { return memo + ("0" + i.toString(16)).slice(-2); }, ""); }
-        function intToHex(intIn, bytes = 4) { return intIn.toString(16).padStart(bytes * 2, '0'); }
-
-        function canvas2bytes(canvas, type = 'bw') {
-            const ctx = canvas.getContext("2d", { willReadFrequently: true });
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        function canvas2bytes_bw(canvas) {
+            const context = canvas.getContext("2d", { willReadFrequently: true });
+            const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
             const arr = []; let buffer = [];
-            for (let y = 0; y < canvas.height; y++) {
-                for (let x = 0; x < canvas.width; x++) {
-                    const i = (canvas.width * 4 * y) + x * 4;
-                    buffer.push(type !== 'bwr' ? (imgData[i] > 0 && imgData[i+1] > 0 && imgData[i+2] > 0 ? 1 : 0) : (imgData[i] > 0 && imgData[i+1] === 0 && imgData[i+2] === 0 ? 1 : 0));
-                    if (buffer.length === 8) { arr.push(parseInt(buffer.join(''), 2)); buffer = []; }
-                }
-            }
-            return arr;
-        }
-
-        function canvas2bytes_bw(canvas, type='bw') {
-            const ctx = canvas.getContext("2d", { willReadFrequently: true });
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-            const arr = []; let buffer = [];
-            for (let x = canvas.width - 1; x >= 0; x--) {
-                for (let y = 0; y < canvas.height; y++) {
-                    const i = (canvas.width * 4 * y) + x * 4;
-                    buffer.push(type !== 'bwr' ? (imgData[i] > 0 && imgData[i+1] > 0 && imgData[i+2] > 0 ? 1 : 0) : (imgData[i] > 0 && imgData[i+1] === 0 && imgData[i+2] === 0 ? 1 : 0));
-                    if (buffer.length === 8) { arr.push(parseInt(buffer.join(''), 2)); buffer = []; }
-                }
+            for (let x = canvas.width - 1; x >= 0; x--) { 
+                for (let y = 0; y < canvas.height; y++) { 
+                    const i = (canvas.width * 4 * y) + x * 4; 
+                    buffer.push(data[i] > 128 ? 1 : 0); 
+                    if (buffer.length === 8) { 
+                        arr.push(parseInt(buffer.join(''), 2)); 
+                        buffer = []; 
+                    } 
+                } 
             }
             return arr;
         }
 
         function generateHex() {
-            const elDither = document.getElementById('epd-dither');
-            const modeStr = elDither ? elDither.value : 'floydsteinberg'; 
-            const w = epdConfig.w;
-            let arr = (w == 296 || w == 250 || w == 212) ? canvas2bytes_bw(canvasPreview, modeStr.startsWith('bwr') ? 'bwr' : 'bw') : canvas2bytes(canvasPreview, modeStr.startsWith('bwr') ? 'bwr' : 'bw');
+            if(!canvasPreview) return;
+            const arr = canvas2bytes_bw(canvasPreview); 
             let str = '';
-            for (let i = 0; i < arr.length; i++) { str += '0x' + arr[i].toString(16).padStart(2, '0').toUpperCase(); str += (i < arr.length - 1) ? (((i + 1) % 16 === 0) ? ',\n' : ', ') : ''; }
-            const hexOut = document.getElementById('hex-output');
-            if(hexOut) hexOut.value = str; 
-            log('Đã tạo mã Hex thành công!');
+            for (let i = 0; i < arr.length; i++) { 
+                str += '0x' + arr[i].toString(16).padStart(2, '0').toUpperCase() + ((i + 1) % 16 === 0 ? ',\n' : ', '); 
+            }
+            if(hexOutput) hexOutput.value = str; 
+            log('Đã tạo mã Hex!');
         }
 
-        // --- BLUETOOTH DA14585 ---
         let daDevice, daChar;
-        const DA_SVC = '00001f10-0000-1000-8000-00805f9b34fb'; const DA_CHR = '00001f1f-0000-1000-8000-00805f9b34fb';
+        const DA_SVC = '00001f10-0000-1000-8000-00805f9b34fb';
+        const DA_CHR = '00001f1f-0000-1000-8000-00805f9b34fb';
 
-        const btnDaConnect = document.getElementById('btn-da-connect');
-        if(btnDaConnect) {
-            btnDaConnect.onclick = async () => {
-                if (!navigator.bluetooth) return alert('Trình duyệt không hỗ trợ Bluetooth!\n Trên iOS: Vui lòng tải ứng dụng "Bluefy" từ App Store.');
-                try {
-                    daDevice = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "DLG-" }], optionalServices: [DA_SVC] });
-                    const server = await daDevice.gatt.connect(); const service = await server.getPrimaryService(DA_SVC); daChar = await service.getCharacteristic(DA_CHR);
-                    ['btn-da-connect','btn-disconnect','btn-da-sync','btn-da-img','btn-da-time','btn-da-cal'].forEach(id => {
-                        const el = document.getElementById(id);
-                        if(el) el.disabled = id === 'btn-da-connect';
-                    });
-                    log('Kết nối thành công DA14585!');
-                } catch (e) { log('Lỗi kết nối: ' + e); }
+        async function connectDA() {
+            if (!navigator.bluetooth) return alert('Trình duyệt không hỗ trợ Bluetooth!');
+            try {
+                daDevice = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "DLG-" }], optionalServices: [DA_SVC] });
+                const s = await daDevice.gatt.connect();
+                const svc = await s.getPrimaryService(DA_SVC);
+                daChar = await svc.getCharacteristic(DA_CHR);
+                ['btn-da-connect','btn-disconnect','btn-da-sync','btn-da-img','btn-da-time','btn-da-cal'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.disabled = (id === 'btn-da-connect');
+                });
+                log('Kết nối DA14585 thành công!');
+            } catch (e) { log('Lỗi kết nối DA: ' + e); }
+        }
+
+        async function uploadEink() {
+            if(!daChar || !canvasPreview) return;
+            const btn = document.getElementById('btn-upload-eink');
+            if(btn) btn.disabled = true;
+            
+            try {
+                const dataArr = canvas2bytes_bw(canvasPreview);
+                const cod = (dataArr.length === 3500 || dataArr.length === 9000) ? 0x04 : 0x03;
+                const intervalEl = document.getElementById('confirmInterval');
+                const interval = intervalEl ? parseInt(intervalEl.value) : 20;
+                
+                for(let offset=0; offset<dataArr.length; offset+=240) {
+                    const chunk = Math.min(240, dataArr.length - offset);
+                    let packet = new Uint8Array(4 + chunk);
+                    packet[0] = cod; 
+                    packet[1] = 0xFF; 
+                    packet[2] = (offset >> 8) & 0xFF; 
+                    packet[3] = offset & 0xFF;
+                    for(let i=0; i<chunk; i++) packet[4+i] = dataArr[offset+i];
+                    await daChar.writeValue(packet);
+                    const progress = document.getElementById('upload-progress');
+                    if(progress) progress.style.width = Math.round((offset/dataArr.length)*100) + '%';
+                    await delay(interval);
+                }
+                await daChar.writeValue(new Uint8Array([0x01])); 
+                saveToHistory(); 
+                log('Cập nhật thành công!');
+            } catch(e) { log('Lỗi truyền ảnh: ' + e); }
+            finally { if(btn) btn.disabled = false; }
+        }
+
+        let espDev, espChar;
+        async function connectESP() {
+            try {
+                espDev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'BMO-' }], optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b'] });
+                const s = await espDev.gatt.connect();
+                const svc = await s.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
+                espChar = await svc.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+                document.getElementById('btn-esp-connect').disabled = true; 
+                document.getElementById('btn-esp-sync').disabled = false; 
+                document.getElementById('btn-esp-wifi').disabled = false;
+                log('Kết nối ESP32-C3 thành công!');
+            } catch (e) { log('Lỗi ESP32: ' + e); }
+        }
+
+        async function syncTimeESP() {
+            if(!espChar) return;
+            const prefix = document.getElementById('esp-custom-code').value;
+            const now = new Date();
+            const timeStr = `${prefix}${now.getFullYear()},${now.getMonth()+1},${now.getDate()},${now.getHours()},${now.getMinutes()},${now.getSeconds()}`;
+            await espChar.writeValue(new TextEncoder().encode(timeStr));
+            log(`Gửi giờ: ${timeStr}`);
+        }
+
+        async function sendWifiESP() {
+            if(!espChar) return;
+            const ssid = document.getElementById('wifi-ssid').value.trim();
+            const pass = document.getElementById('wifi-pass').value.trim();
+            const cityId = document.getElementById('wifi-city-id').value;
+            
+            if(!ssid) return alert("Vui lòng nhập tên Wi-Fi!");
+            localStorage.setItem('bmo-wifi-ssid', ssid);
+            localStorage.setItem('bmo-wifi-pass', pass);
+            localStorage.setItem('bmo-wifi-city-id', cityId);
+            const wifiStr = `SET_WIFI:${ssid},${pass},${cityId}`;
+            await espChar.writeValue(new TextEncoder().encode(wifiStr));
+            const cityName = document.getElementById('wifi-city-id').options[document.getElementById('wifi-city-id').selectedIndex].text;
+            log(`🚀 Đã gửi Wi-Fi & Vị trí: ${ssid} | ${cityName}`);
+        }
+
+        function initEvents() {
+            const ssid = localStorage.getItem('bmo-wifi-ssid'), pass = localStorage.getItem('bmo-wifi-pass'), cityId = localStorage.getItem('bmo-wifi-city-id');
+            if(ssid) document.getElementById('wifi-ssid').value = ssid;
+            if(pass) document.getElementById('wifi-pass').value = pass;
+            if(cityId) document.getElementById('wifi-city-id').value = cityId;
+
+            document.getElementById('epd-size').addEventListener('change', (e) => {
+                const [w, h] = e.target.value.split('x').map(Number);
+                epdConfig.w = w; epdConfig.h = h;
+                if(canvasPreview) canvasPreview.width = w; 
+                canvasPreview.height = h;
+                canvasSource.width = w; canvasSource.height = h;
+                if(cropper) cropper.setAspectRatio(R4(w / h));
+                if(ctxS) { ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, w, h); }
+                processImage();
+            });
+
+            document.getElementById('image-upload').addEventListener('change', e => { if (e.target.files.length > 0) loadImageToCropper(e.target.files[0]); });
+            document.getElementById('btn-rotate-left').onclick = () => { if (cropper) cropper.rotate(-90); };
+            document.getElementById('btn-rotate-right').onclick = () => { if (cropper) cropper.rotate(90); };
+            document.getElementById('btn-crop').onclick = () => {
+                if(!cropper) return;
+                const cropped = cropper.getCroppedCanvas({ width: epdConfig.w, height: epdConfig.h });
+                if(ctxS) {
+                    ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
+                    ctxS.drawImage(cropped, 0, 0, epdConfig.w, epdConfig.h);
+                }
+                document.getElementById('cropper-container').style.display = 'none';
+                cropper.destroy(); cropper = null;
+                processImage();
             };
+
+            const aligns = { 'align-left': 'left', 'align-center': 'center', 'align-right': 'right' };
+            Object.keys(aligns).forEach(id => {
+                const btn = document.getElementById(id);
+                if(btn) {
+                    btn.onclick = () => {
+                        currentTextAlign = aligns[id];
+                        Object.keys(aligns).forEach(k => { 
+                            const el = document.getElementById(k);
+                            if(el) el.className = (k === id ? 'btn btn-primary' : 'btn btn-outline');
+                        });
+                    };
+                }
+            });
+
+            document.getElementById('btn-add-text').onclick = () => {
+                const text = document.getElementById('text-input-area').value.trim();
+                if(!text) return alert("Vui lòng nhập văn bản!");
+                const size = parseInt(document.getElementById('text-font-size').value) || 24;
+                const font = document.getElementById('text-font-family').value;
+                const bold = document.getElementById('text-bold').checked;
+                if(ctxS) {
+                    ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
+                    ctxS.fillStyle = 'black'; ctxS.font = `${bold ? 'bold' : 'normal'} ${size}px ${font}`;
+                    ctxS.textBaseline = 'middle';
+                    const lines = text.split('\n'), hAll = lines.length * size * 1.3;
+                    let y = (epdConfig.h - hAll) / 2 + (size * 1.3) / 2;
+                    lines.forEach(line => {
+                        if (currentTextAlign === 'center') { ctxS.textAlign = 'center'; ctxS.fillText(line, epdConfig.w / 2, y); }
+                        else if (currentTextAlign === 'left') { ctxS.textAlign = 'left'; ctxS.fillText(line, 10, y); }
+                        else { ctxS.textAlign = 'right'; ctxS.fillText(line, epdConfig.w - 10, y); }
+                        y += size * 1.3;
+                    });
+                }
+                processImage();
+            };
+
+            document.getElementById('btn-add-qr').onclick = () => {
+                const text = document.getElementById('qr-input').value;
+                if(!text) return;
+                const qrDiv = document.createElement('div');
+                new QRCode(qrDiv, { text, width: epdConfig.h, height: epdConfig.h });
+                setTimeout(() => {
+                    const c = qrDiv.querySelector('canvas');
+                    if(c && ctxS) {
+                        ctxS.fillStyle = 'white'; ctxS.fillRect(0,0,epdConfig.w,epdConfig.h);
+                        ctxS.drawImage(c, (epdConfig.w - epdConfig.h)/2, 0, epdConfig.h, epdConfig.h);
+                        processImage();
+                    }
+                }, 100);
+            };
+
+            ['thresh', 'bright'].forEach(id => {
+                const el = document.getElementById(`adj-${id}`);
+                if(el) {
+                    el.addEventListener('input', e => {
+                        const valDisplay = document.getElementById(`val-${id}`);
+                        if(valDisplay) valDisplay.textContent = e.target.value; 
+                        processImage();
+                    });
+                }
+            });
+
+            document.getElementById('epd-dither').addEventListener('change', processImage);
+            document.getElementById('btn-generate-hex').onclick = generateHex;
+            document.getElementById('btn-save-history').onclick = saveToHistory;
+            
+            document.getElementById('btn-da-connect').onclick = connectDA;
+            document.getElementById('btn-upload-eink').onclick = uploadEink;
+            document.getElementById('btn-esp-connect').onclick = connectESP;
+            document.getElementById('btn-esp-sync').onclick = syncTimeESP;
+            document.getElementById('btn-esp-wifi').onclick = sendWifiESP;
+            document.getElementById('btn-disconnect').onclick = () => { if(daDevice && daDevice.gatt.connected) daDevice.gatt.disconnect(); location.reload(); };
+
+            document.getElementById('btn-da-sync').onclick = async () => {
+                if(!daChar) return; const now = Math.floor(Date.now() / 1000) + 8 * 3600;
+                await daSendCmdBytes(new Uint8Array([0xDD, (now>>24)&0xFF, (now>>16)&0xFF, (now>>8)&0xFF, now&0xFF]));
+                await delay(200); await daSendCmd(0xE2); log('Đã đồng bộ giờ (UTC+8).');
+            };
+            document.getElementById('btn-da-img').onclick = async () => { await daSendCmd(0xE1, [0]); await delay(200); await daSendCmd(0xE2); log('Chế độ Ảnh.'); };
+            document.getElementById('btn-da-time').onclick = async () => { await daSendCmd(0xE1, [2]); await delay(200); await daSendCmd(0xE2); log('Chế độ Giờ.'); };
+            document.getElementById('btn-da-cal').onclick = async () => { await daSendCmd(0xE1, [1]); await delay(200); await daSendCmd(0xE2); log('Chế độ Lịch.'); };
         }
 
         async function daSendCmdBytes(buf) { if(!daChar) return false; try { if (daChar.writeValueWithResponse) await daChar.writeValueWithResponse(buf); else await daChar.writeValue(buf); return true; } catch(e) { return false; } }
         async function daSendCmd(cmd, data = []) { return await daSendCmdBytes(new Uint8Array([cmd, ...data])); }
 
-        const btnDaSync = document.getElementById('btn-da-sync');
-        if(btnDaSync) {
-            btnDaSync.onclick = async () => {
-                if(!daChar) return; const now = Math.floor(Date.now() / 1000) + 8 * 3600;
-                await daSendCmdBytes(new Uint8Array([0xDD, (now>>24)&0xFF, (now>>16)&0xFF, (now>>8)&0xFF, now&0xFF])); await delay(200); await daSendCmd(0xE2); log('Đã đồng bộ giờ (UTC+8).');
-            };
-        }
-
-        const btnDaImg = document.getElementById('btn-da-img');
-        if(btnDaImg) btnDaImg.onclick = async () => { await daSendCmd(0xE1, [0]); await delay(200); await daSendCmd(0xE2); log('Chế độ Ảnh.'); };
-        
-        const btnDaTime = document.getElementById('btn-da-time');
-        if(btnDaTime) btnDaTime.onclick = async () => { await daSendCmd(0xE1, [2]); await delay(200); await daSendCmd(0xE2); log('Chế độ Giờ.'); };
-        
-        const btnDaCal = document.getElementById('btn-da-cal');
-        if(btnDaCal) btnDaCal.onclick = async () => { await daSendCmd(0xE1, [1]); await delay(200); await daSendCmd(0xE2); log('Chế độ Lịch.'); };
-
-        const btnUploadEink = document.getElementById('btn-upload-eink');
-        if(btnUploadEink) {
-            btnUploadEink.onclick = async () => {
-                if(!daChar) return alert('Chưa kết nối Bluetooth DA14585!');
-                try {
-                    const canvas = canvasPreview; const w = canvas.width; const h = canvas.height; 
-                    const elDither = document.getElementById('epd-dither');
-                    const modeStr = elDither ? elDither.value : 'floydsteinberg';
-                    
-                    document.getElementById('btn-upload-eink').disabled = true; 
-                    const upProgress = document.getElementById('upload-progress');
-                    if(upProgress) upProgress.style.width = '0%';
-                    
-                    let dataArr = (w == 296 || w == 250 || w == 212) ? canvas2bytes_bw(canvas, 'bw') : canvas2bytes(canvas, 'bw');
-                    let cod = (dataArr.length === 3500 || dataArr.length === 9000) ? 0x04 : 0x03; let offset = 0;
-                    
-                    const confIntEl = document.getElementById('confirmInterval');
-                    const intervalMs = parseInt(confIntEl ? confIntEl.value : 20);
-
-                    while(offset < dataArr.length) {
-                        const chunk = Math.min(240, dataArr.length - offset); let packet = new Uint8Array(4 + chunk);
-                        packet[0] = cod; packet[1] = 0xFF; packet[2] = (offset >> 8) & 0xFF; packet[3] = offset & 0xFF;
-                        for(let i=0; i<chunk; i++) packet[4+i] = dataArr[offset+i];
-                        await daChar.writeValue(packet); offset += chunk;
-                        if(upProgress) upProgress.style.width = Math.round((offset/dataArr.length)*100) + '%'; 
-                        await delay(intervalMs);
-                    }
-
-                    if (modeStr.startsWith('bwr') && w !== 250 && w !== 212) {
-                        let redArr = (w == 296) ? canvas2bytes_bw(canvas, 'bwr') : canvas2bytes(canvas, 'bwr'); offset = 0;
-                        while(offset < redArr.length) {
-                            const chunk = Math.min(240, redArr.length - offset); let packet = new Uint8Array(4 + chunk);
-                            packet[0] = cod; packet[1] = 0x00; packet[2] = (offset >> 8) & 0xFF; packet[3] = offset & 0xFF;
-                            for(let i=0; i<chunk; i++) packet[4+i] = redArr[offset+i];
-                            await daChar.writeValue(packet); offset += chunk; await delay(intervalMs);
-                        }
-                    }
-                    
-                    if (w === 280 || h === 180) await daSendCmdBytes(hexToBytes("AA")); else await daSendCmdBytes(hexToBytes("01"));
-                    saveToHistory(); log('Cập nhật thành công!');
-                } catch(e) { log('Lỗi: ' + e); } finally { document.getElementById('btn-upload-eink').disabled = false; }
-            };
-        }
-
-        const btnDisconnect = document.getElementById('btn-disconnect');
-        if(btnDisconnect) {
-            btnDisconnect.onclick = () => { if(daDevice && daDevice.gatt.connected) daDevice.gatt.disconnect(); location.reload(); };
-        }
-
-        // --- ESP32 CUSTOM ---
-        let espDev, espChar;
-        const btnEspConnect = document.getElementById('btn-esp-connect');
-        if(btnEspConnect) {
-            btnEspConnect.onclick = async () => {
-                if (!navigator.bluetooth) return alert('Trình duyệt này không hỗ trợ Bluetooth!');
-                try {
-                    espDev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'BMO-' }], optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b'] });
-                    const server = await espDev.gatt.connect(); const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
-                    espChar = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
-                    document.getElementById('btn-esp-connect').disabled = true; 
-                    const espsync = document.getElementById('btn-esp-sync');
-                    if(espsync) espsync.disabled = false; 
-                    log('Kết nối ESP32-C3 thành công!');
-                } catch (e) { log('Lỗi kết nối ESP32: ' + e); }
-            };
-        }
-        
-        const btnEspSync = document.getElementById('btn-esp-sync');
-        if(btnEspSync) {
-            btnEspSync.onclick = async () => {
-                if (!espChar) return;
-                const elPrefix = document.getElementById('esp-custom-code');
-                const prefix = elPrefix ? elPrefix.value : ''; 
-                const now = new Date();
-                const timeStr = `${prefix}${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
-                await espChar.writeValue(new TextEncoder().encode(timeStr)); log(`Đã gửi ESP32: ${timeStr}`);
-            };
-        }
-
-        // Khởi động
         initTheme();
+        setupSliders();
         initEvents();
         initDragAndDrop();
         loadHistory();
-        if(ctxS) {
-            ctxS.fillStyle = 'white'; 
-            ctxS.fillRect(0,0,212,104);
-        }
+        if(ctxS) { ctxS.fillStyle = 'white'; ctxS.fillRect(0,0,212,104); }
         processImage();
     </script>
 </body>
