@@ -1042,14 +1042,25 @@
             btnEspConnect.onclick = async () => {
                 if (!navigator.bluetooth) return alert('Trình duyệt này không hỗ trợ Bluetooth!');
                 try {
-                    espDev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'BMO-' }], optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b'] });
-                    const server = await espDev.gatt.connect(); const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
+                    log('Đang quét tất cả thiết bị (để tương thích Bluefy)... Hãy chọn BMO-ESP32');
+                    
+                    // FIXED: Thay vì dùng namePrefix (hay bị lỗi trên Bluefy iOS), chuyển sang acceptAllDevices
+                    espDev = await navigator.bluetooth.requestDevice({ 
+                        acceptAllDevices: true, 
+                        optionalServices: ['4fafc201-1fb5-459e-8fcc-c5c9c331914b'] 
+                    });
+                    
+                    const server = await espDev.gatt.connect(); 
+                    const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
                     espChar = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
+                    
                     document.getElementById('btn-esp-connect').disabled = true; 
                     const espsync = document.getElementById('btn-esp-sync');
                     if(espsync) espsync.disabled = false; 
                     log('Kết nối ESP32-C3 thành công!');
-                } catch (e) { log('Lỗi kết nối ESP32: ' + e); }
+                } catch (e) { 
+                    log('Lỗi kết nối ESP32: ' + e); 
+                }
             };
         }
         
