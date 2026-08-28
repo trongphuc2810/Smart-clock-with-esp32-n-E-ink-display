@@ -1134,19 +1134,24 @@
         async function daSendCmdBytes(buf) { if(!daChar) return false; try { if (daChar.writeValueWithResponse) await daChar.writeValueWithResponse(buf); else await daChar.writeValue(buf); return true; } catch(e) { return false; } }
         async function daSendCmd(cmd, data = []) { return await daSendCmdBytes(new Uint8Array([cmd, ...data])); }
 
+        // Múi giờ cần gửi cho DA14585.
+        // Firmware mạch hiểu giá trị nhận là "epoch đã cộng sẵn offset", rồi tự trừ đi khi hiển thị.
+        // Thực nghiệm: gửi UTC+8 cho hiển thị đúng giờ VN (UTC+7) → firmware tự bù -1h.
+        // KHÔNG dùng getTimezoneOffset() vì gây lệch 1h (gửi UTC+7 → mạch hiển thị chậm 1h).
+        // Nếu thay firmware, chỉnh hằng số này.
+        const DA_TZ_OFFSET_HOURS = 8;
         const btnDaSync = document.getElementById('btn-da-sync');
         if(btnDaSync) {
             btnDaSync.onclick = async () => {
                 if(!daChar) return showToast('Chưa kết nối DA14585!', 'error');
                 const now = new Date();
-                const tzOffsetSec = -now.getTimezoneOffset() * 60;
-                const epocWithTz = Math.floor(now.getTime() / 1000) + tzOffsetSec;
+                const epocWithTz = Math.floor(now.getTime() / 1000) + DA_TZ_OFFSET_HOURS * 3600;
                 setButtonLoading(btnDaSync, true, 'Đang đồng bộ...');
                 try {
                     await daSendCmdBytes(new Uint8Array([0xDD, (epocWithTz>>24)&0xFF, (epocWithTz>>16)&0xFF, (epocWithTz>>8)&0xFF, epocWithTz&0xFF]));
                     await delay(200);
                     await daSendCmd(0xE2);
-                    log('Đã đồng bộ giờ theo múi giờ thiết bị.');
+                    log('Đã đồng bộ giờ (UTC+' + DA_TZ_OFFSET_HOURS + ' cho firmware).');
                     showToast('Đã đồng bộ giờ.', 'success');
                 } catch(e) {
                     log('Lỗi đồng bộ giờ: ' + e);
