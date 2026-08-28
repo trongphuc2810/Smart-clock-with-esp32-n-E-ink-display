@@ -328,6 +328,33 @@
 
         hr { border: 0; border-top: 1px solid var(--input-border); margin: 16px 0; transition: border-color 0.5s; }
 
+        /* Toast Notification */
+        #toast-container {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 10000; display: flex; flex-direction: column; gap: 10px; align-items: center;
+            pointer-events: none; width: 100%; max-width: 420px; padding: 0 15px;
+        }
+        .toast {
+            background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--apple-text);
+            backdrop-filter: blur(20px) saturate(150%); -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border-radius: 14px; padding: 12px 16px; font-size: 14px; font-weight: 500;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 10px;
+            width: 100%; opacity: 0; transform: translateY(-12px); transition: opacity 0.3s, transform 0.3s;
+            pointer-events: auto;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { border-left: 4px solid var(--apple-green); }
+        .toast.error { border-left: 4px solid var(--apple-red); }
+        .toast.info { border-left: 4px solid var(--apple-blue); }
+
+        /* Spinner trong nút loading */
+        .spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
+            border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -2px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         @media (max-width: 768px) {
             .grid-2 { grid-template-columns: 1fr; }
             body { padding: 20px 10px; }
@@ -339,6 +366,9 @@
 </head>
 
 <body>
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
     <!-- Lớp phủ kéo thả ảnh -->
     <div id="drag-overlay">Thả Ảnh Vào Đây Để Chỉnh Sửa 📸</div>
 
@@ -349,7 +379,7 @@
     <div class="container">
         <div class="header-wrapper">
             <h1>BMO E-ink Controller</h1>
-            <button id="btn-theme-toggle">Giao diện Tối</button>
+            <button id="btn-theme-toggle" aria-label="Chuyển giao diện sáng/tối">Giao diện Tối</button>
         </div>
 
         <!-- 1. KHU VỰC KẾT NỐI BLUETOOTH -->
@@ -526,6 +556,35 @@
     <script>
         function R4(val) { return Math.round(val * 10000) / 10000; }
 
+        // ================= TOAST NOTIFICATION =================
+        function showToast(msg, type = 'info', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icon = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
+            toast.innerHTML = `<span>${icon}</span><span style="flex:1">${msg}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        function setButtonLoading(btn, loading, loadingText = 'Đang xử lý...') {
+            if (!btn) return;
+            if (loading) {
+                if (!btn.dataset.originalText) btn.dataset.originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner"></span> ${loadingText}`;
+            } else {
+                btn.disabled = false;
+                if (btn.dataset.originalText) btn.innerHTML = btn.dataset.originalText;
+                delete btn.dataset.originalText;
+            }
+        }
+
         function initTheme() {
             const themeBtn = document.getElementById('btn-theme-toggle');
             if(!themeBtn) return;
@@ -606,7 +665,7 @@
             history.forEach((item, index) => {
                 const div = document.createElement('div');
                 div.className = 'history-item';
-                div.innerHTML = `<img src="${item.dataUrl}"><button class="btn-history-delete" onclick="deleteHistory(${item.id}, event)">×</button>`;
+                div.innerHTML = `<img src="${item.dataUrl}" alt="Ảnh lịch sử ${index+1}"><button class="btn-history-delete" onclick="deleteHistory(${item.id}, event)" aria-label="Xóa ảnh lịch sử">×</button>`;
                 div.querySelector('img').onclick = () => loadFromHistory(item);
                 container.appendChild(div);
             });
@@ -729,7 +788,7 @@
                     const textArea = document.getElementById('text-input-area');
                     if(!textArea) return;
                     const text = textArea.value.trim();
-                    if(!text) return alert("Vui lòng nhập văn bản!");
+                    if(!text) { showToast('Vui lòng nhập văn bản!', 'error'); return; }
                     const fontSizeEl = document.getElementById('text-font-size');
                     const fontFamEl = document.getElementById('text-font-family');
                     const fontBoldEl = document.getElementById('text-bold');
@@ -764,6 +823,8 @@
                         });
                     }
                     processImage();
+                    log('Đã tạo ảnh từ chữ.');
+                    showToast('Đã tạo ảnh từ chữ.', 'success');
                 };
             }
 
@@ -773,7 +834,7 @@
                     const qrInput = document.getElementById('qr-input');
                     if(!qrInput) return;
                     const text = qrInput.value;
-                    if(!text) return;
+                    if(!text) { showToast('Nhập liên kết hoặc văn bản để tạo QR!', 'error'); return; }
                     const qrDiv = document.createElement('div');
                     new QRCode(qrDiv, { text: text, width: epdConfig.h, height: epdConfig.h, colorDark: "#000", colorLight: "#fff", correctLevel: QRCode.CorrectLevel.L });
                     setTimeout(() => {
@@ -782,6 +843,8 @@
                             ctxS.fillStyle = 'white'; ctxS.fillRect(0, 0, epdConfig.w, epdConfig.h);
                             ctxS.drawImage(canvas, R4((epdConfig.w - epdConfig.h) / 2), 0, epdConfig.h, epdConfig.h);
                             processImage();
+                            log('Đã tạo mã QR.');
+                            showToast('Đã tạo mã QR.', 'success');
                         }
                     }, 100);
                 };
@@ -953,7 +1016,8 @@
         const btnDaConnect = document.getElementById('btn-da-connect');
         if(btnDaConnect) {
             btnDaConnect.onclick = async () => {
-                if (!navigator.bluetooth) return alert('Trình duyệt không hỗ trợ Bluetooth!\n Trên iOS: Vui lòng tải ứng dụng "Bluefy" từ App Store.');
+                if (!navigator.bluetooth) { showToast('Trình duyệt không hỗ trợ Bluetooth! Trên iOS hãy dùng Bluefy.', 'error', 5000); return; }
+                setButtonLoading(btnDaConnect, true, 'Đang kết nối...');
                 try {
                     daDevice = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: "DLG-" }], optionalServices: [DA_SVC] });
                     const server = await daDevice.gatt.connect(); const service = await server.getPrimaryService(DA_SVC); daChar = await service.getCharacteristic(DA_CHR);
@@ -962,7 +1026,15 @@
                         if(el) el.disabled = id === 'btn-da-connect';
                     });
                     log('Kết nối thành công DA14585!');
-                } catch (e) { log('Lỗi kết nối: ' + e); }
+                    showToast('Đã kết nối DA14585.', 'success');
+                } catch (e) {
+                    log('Lỗi kết nối: ' + e);
+                    showToast('Lỗi kết nối DA14585: ' + (e.message || e), 'error', 5000);
+                } finally {
+                    setButtonLoading(btnDaConnect, false);
+                    // Nếu connect thành công thì giữ disable; nếu thất bại thì enable lại
+                    if (daChar) btnDaConnect.disabled = true; else btnDaConnect.disabled = false;
+                }
             };
         }
 
@@ -972,30 +1044,44 @@
         const btnDaSync = document.getElementById('btn-da-sync');
         if(btnDaSync) {
             btnDaSync.onclick = async () => {
-                if(!daChar) return; const now = Math.floor(Date.now() / 1000) + 8 * 3600;
-                await daSendCmdBytes(new Uint8Array([0xDD, (now>>24)&0xFF, (now>>16)&0xFF, (now>>8)&0xFF, now&0xFF])); await delay(200); await daSendCmd(0xE2); log('Đã đồng bộ giờ (UTC+8).');
+                if(!daChar) return showToast('Chưa kết nối DA14585!', 'error');
+                // Dùng múi giờ LOCAL của thiết bị (Không hardcode UTC+8). Lấy offset phút từ JS.
+                const now = new Date();
+                const tzOffsetSec = -now.getTimezoneOffset() * 60; // giây lệch so với UTC (âm nếu sau UTC)
+                const epocWithTz = Math.floor(now.getTime() / 1000) + tzOffsetSec;
+                setButtonLoading(btnDaSync, true, 'Đang đồng bộ...');
+                try {
+                    await daSendCmdBytes(new Uint8Array([0xDD, (epocWithTz>>24)&0xFF, (epocWithTz>>16)&0xFF, (epocWithTz>>8)&0xFF, epocWithTz&0xFF]));
+                    await delay(200);
+                    await daSendCmd(0xE2);
+                    log('Đã đồng bộ giờ theo múi giờ thiết bị.');
+                    showToast('Đã đồng bộ giờ.', 'success');
+                } catch(e) {
+                    log('Lỗi đồng bộ giờ: ' + e);
+                    showToast('Lỗi đồng bộ giờ.', 'error');
+                } finally { setButtonLoading(btnDaSync, false); }
             };
         }
 
         const btnDaImg = document.getElementById('btn-da-img');
-        if(btnDaImg) btnDaImg.onclick = async () => { await daSendCmd(0xE1, [0]); await delay(200); await daSendCmd(0xE2); log('Chế độ Ảnh.'); };
+        if(btnDaImg) btnDaImg.onclick = async () => { await daSendCmd(0xE1, [0]); await delay(200); await daSendCmd(0xE2); log('Chế độ Ảnh.'); showToast('Chế độ Ảnh.', 'info'); };
         
         const btnDaTime = document.getElementById('btn-da-time');
-        if(btnDaTime) btnDaTime.onclick = async () => { await daSendCmd(0xE1, [2]); await delay(200); await daSendCmd(0xE2); log('Chế độ Giờ.'); };
+        if(btnDaTime) btnDaTime.onclick = async () => { await daSendCmd(0xE1, [2]); await delay(200); await daSendCmd(0xE2); log('Chế độ Giờ.'); showToast('Chế độ Giờ.', 'info'); };
         
         const btnDaCal = document.getElementById('btn-da-cal');
-        if(btnDaCal) btnDaCal.onclick = async () => { await daSendCmd(0xE1, [1]); await delay(200); await daSendCmd(0xE2); log('Chế độ Lịch.'); };
+        if(btnDaCal) btnDaCal.onclick = async () => { await daSendCmd(0xE1, [1]); await delay(200); await daSendCmd(0xE2); log('Chế độ Lịch.'); showToast('Chế độ Lịch.', 'info'); };
 
         const btnUploadEink = document.getElementById('btn-upload-eink');
         if(btnUploadEink) {
             btnUploadEink.onclick = async () => {
-                if(!daChar) return alert('Chưa kết nối Bluetooth DA14585!');
+                if(!daChar) return showToast('Chưa kết nối DA14585!', 'error');
                 try {
                     const canvas = canvasPreview; const w = canvas.width; const h = canvas.height; 
                     const elDither = document.getElementById('epd-dither');
                     const modeStr = elDither ? elDither.value : 'floydsteinberg';
                     
-                    document.getElementById('btn-upload-eink').disabled = true; 
+                    setButtonLoading(btnUploadEink, true, 'Đang cập nhật...');
                     const upProgress = document.getElementById('upload-progress');
                     if(upProgress) upProgress.style.width = '0%';
                     
@@ -1024,9 +1110,14 @@
                         }
                     }
                     
-                    if (w === 280 || h === 180) await daSendCmdBytes(hexToBytes("AA")); else await daSendCmdBytes(hexToBytes("01"));
-                    saveToHistory(); log('Cập nhật thành công!');
-                } catch(e) { log('Lỗi: ' + e); } finally { document.getElementById('btn-upload-eink').disabled = false; }
+                    await daSendCmdBytes(hexToBytes("01"));
+                    saveToHistory();
+                    log('Cập nhật thành công!');
+                    showToast('Đã cập nhật E-ink!', 'success');
+                } catch(e) {
+                    log('Lỗi: ' + e);
+                    showToast('Lỗi khi cập nhật E-ink: ' + (e.message || e), 'error', 5000);
+                } finally { setButtonLoading(btnUploadEink, false); }
             };
         }
 
@@ -1040,7 +1131,8 @@
         const btnEspConnect = document.getElementById('btn-esp-connect');
         if(btnEspConnect) {
             btnEspConnect.onclick = async () => {
-                if (!navigator.bluetooth) return alert('Trình duyệt này không hỗ trợ Bluetooth!');
+                if (!navigator.bluetooth) return showToast('Trình duyệt không hỗ trợ Bluetooth!', 'error', 5000);
+                setButtonLoading(btnEspConnect, true, 'Đang kết nối...');
                 try {
                     log('Đang quét tất cả thiết bị (để tương thích Bluefy)... Hãy chọn BMO-ESP32');
                     
@@ -1054,25 +1146,34 @@
                     const service = await server.getPrimaryService('4fafc201-1fb5-459e-8fcc-c5c9c331914b');
                     espChar = await service.getCharacteristic('beb5483e-36e1-4688-b7f5-ea07361b26a8');
                     
-                    document.getElementById('btn-esp-connect').disabled = true; 
+                    btnEspConnect.disabled = true; 
                     const espsync = document.getElementById('btn-esp-sync');
                     if(espsync) espsync.disabled = false; 
                     log('Kết nối ESP32-C3 thành công!');
+                    showToast('Đã kết nối ESP32-C3.', 'success');
                 } catch (e) { 
                     log('Lỗi kết nối ESP32: ' + e); 
-                }
+                    showToast('Lỗi kết nối ESP32: ' + (e.message || e), 'error', 5000);
+                } finally { setButtonLoading(btnEspConnect, false); if (!espChar) btnEspConnect.disabled = false; }
             };
         }
         
         const btnEspSync = document.getElementById('btn-esp-sync');
         if(btnEspSync) {
             btnEspSync.onclick = async () => {
-                if (!espChar) return;
-                const elPrefix = document.getElementById('esp-custom-code');
-                const prefix = elPrefix ? elPrefix.value : ''; 
-                const now = new Date();
-                const timeStr = `${prefix}${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
-                await espChar.writeValue(new TextEncoder().encode(timeStr)); log(`Đã gửi ESP32: ${timeStr}`);
+                if (!espChar) return showToast('Chưa kết nối ESP32!', 'error');
+                setButtonLoading(btnEspSync, true, 'Đang gửi...');
+                try {
+                    const elPrefix = document.getElementById('esp-custom-code');
+                    const prefix = elPrefix ? elPrefix.value : ''; 
+                    const now = new Date();
+                    const timeStr = `${prefix}${now.getFullYear()},${String(now.getMonth()+1).padStart(2,'0')},${String(now.getDate()).padStart(2,'0')},${String(now.getHours()).padStart(2,'0')},${String(now.getMinutes()).padStart(2,'0')},${String(now.getSeconds()).padStart(2,'0')}`;
+                    await espChar.writeValue(new TextEncoder().encode(timeStr)); log(`Đã gửi ESP32: ${timeStr}`);
+                    showToast('Đã gửi giờ ESP32-C3.', 'success');
+                } catch(e) {
+                    log('Lỗi gửi ESP32: ' + e);
+                    showToast('Lỗi gửi ESP32: ' + (e.message || e), 'error', 5000);
+                } finally { setButtonLoading(btnEspSync, false); }
             };
         }
 
