@@ -11,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
     <style>
         /* ============ MATERIAL 3 DESIGN TOKENS ============ */
         :root {
@@ -97,6 +98,15 @@
             padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
         }
 
+        /* ============ MATERIAL ICON ============ */
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal;
+            font-size: 22px; line-height: 1; letter-spacing: normal; text-transform: none;
+            display: inline-block; white-space: nowrap; word-wrap: normal;
+            direction: ltr; -webkit-font-smoothing: antialiased; vertical-align: middle;
+        }
+        .msm { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
+
         /* ============ TOP APP BAR ============ */
         .app-bar {
             position: sticky; top: 0; z-index: 50;
@@ -107,7 +117,7 @@
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             transition: background-color 0.2s;
         }
-        .app-bar .title { font-size: 22px; font-weight: 500; letter-spacing: 0; }
+        .app-bar .title { font-size: 20px; font-weight: 500; letter-spacing: 0.01em; }
         .app-bar .actions { display: flex; gap: 8px; }
         .icon-btn {
             width: 48px; height: 48px; border-radius: 50%;
@@ -163,9 +173,10 @@
         }
         .card-title {
             font-size: 16px; font-weight: 500; color: var(--on-surface);
-            display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+            padding-right: 8px;
         }
-        .card-title .material-icon { font-size: 20px; color: var(--primary); }
+        .card-title .material-icon { font-size: 20px; color: var(--primary); font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
         .card-subtitle { font-size: 13px; color: var(--on-surface-variant); margin-top: -8px; margin-bottom: 12px; }
 
         /* ============ FORM ============ */
@@ -289,7 +300,7 @@
 
         /* ============ FAB ============ */
         .fab {
-            position: fixed; right: 16px; bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 16px);
+            position: fixed; right: 16px; bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + 24px);
             width: 56px; height: 56px; border-radius: 16px;
             background: var(--primary-container); color: var(--on-primary-container);
             border: none; font-size: 24px; cursor: pointer;
@@ -409,7 +420,7 @@
     <header class="app-bar">
         <div class="title">BMO E-ink</div>
         <div class="actions">
-            <button id="btn-theme-toggle" class="icon-btn" aria-label="Chuyển giao diện sáng/tối">🌓</button>
+            <button id="btn-theme-toggle" class="icon-btn" aria-label="Chuyển giao diện sáng/tối"><span class="msm">dark_mode</span></button>
         </div>
     </header>
 
@@ -418,24 +429,24 @@
     <!-- ============ TAB 1: THIẾT BỊ ============ -->
     <section class="section" id="tab-devices">
         <div class="card">
-            <div class="card-title"><span class="material-icon">📟</span> Mạch DA14585 (Gốc)</div>
+            <div class="card-title"><span class="material-icon">devices</span> Mạch DA14585 (Gốc)</div>
             <div class="conn-status"><span class="conn-dot" id="da-dot"></span><span id="da-status-text">Chưa kết nối</span></div>
             <div style="display:flex; gap:10px; margin-bottom:8px;">
                 <button id="btn-da-connect" class="btn btn-filled" style="flex:1;">Kết Nối</button>
                 <button id="btn-disconnect" class="btn btn-outlined" style="flex:1;" disabled>Ngắt</button>
             </div>
             <div style="display:flex; gap:8px; margin-bottom:8px;">
-                <button id="btn-da-sync" class="btn btn-tonal" style="flex:1;" disabled>⏱ Đồng Bộ Giờ</button>
+                <button id="btn-da-sync" class="btn btn-tonal" style="flex:1;" disabled><span class="msm">schedule</span> Đồng Bộ Giờ</button>
             </div>
             <div class="chip-row">
-                <button class="chip" id="btn-da-img" disabled>🖼 Ảnh</button>
-                <button class="chip" id="btn-da-time" disabled>🕐 Giờ</button>
-                <button class="chip" id="btn-da-cal" disabled>📅 Lịch</button>
+                <button class="chip" id="btn-da-img" disabled><span class="msm">image</span> Ảnh</button>
+                <button class="chip" id="btn-da-time" disabled><span class="msm">schedule</span> Giờ</button>
+                <button class="chip" id="btn-da-cal" disabled><span class="msm">calendar_month</span> Lịch</button>
             </div>
         </div>
 
         <div class="card">
-            <div class="card-title"><span class="material-icon">🔌</span> Mạch ESP32-C3 (Tùy biến)</div>
+            <div class="card-title"><span class="material-icon">usb</span> Mạch ESP32-C3 (Tùy biến)</div>
             <div class="conn-status"><span class="conn-dot" id="esp-dot"></span><span id="esp-status-text">Chưa kết nối</span></div>
             <button id="btn-esp-connect" class="btn btn-filled btn-block" style="margin-bottom:10px;">Kết Nối ESP32-C3</button>
             <div class="form-group">
@@ -449,7 +460,7 @@
     <!-- ============ TAB 2: TẠO ẢNH ============ -->
     <section class="section" id="tab-create">
         <div class="card">
-            <div class="card-title"><span class="material-icon">🖌️</span> Nội dung hiển thị</div>
+            <div class="card-title"><span class="material-icon">brush</span> Nội dung hiển thị</div>
             <div class="form-group">
                 <label for="epd-size">Kích thước màn hình</label>
                 <select id="epd-size" class="form-control">
@@ -494,8 +505,8 @@
                 <div id="cropper-container">
                     <div class="img-container"><img id="cropper-image" alt="Ảnh tải lên"></div>
                     <div class="cropper-actions">
-                        <button id="btn-rotate-left" class="btn btn-outlined btn-small">⟲ Xoay Trái</button>
-                        <button id="btn-rotate-right" class="btn btn-outlined btn-small">⟳ Xoay Phải</button>
+                        <button id="btn-rotate-left" class="btn btn-outlined btn-small"><span class="msm">rotate_left</span> Xoay Trái</button>
+                        <button id="btn-rotate-right" class="btn btn-outlined btn-small"><span class="msm">rotate_right</span> Xoay Phải</button>
                     </div>
                     <button id="btn-crop" class="btn btn-filled btn-block" style="margin-top:10px;">Xác Nhận Cắt</button>
                 </div>
@@ -511,7 +522,7 @@
         </div>
 
         <div class="card">
-            <div class="card-title"><span class="material-icon">🎚️</span> Xử lý ảnh</div>
+            <div class="card-title"><span class="material-icon">tune</span> Xử lý ảnh</div>
             <div class="form-group">
                 <label for="epd-dither">Thuật toán khử răng cưa</label>
                 <select id="epd-dither" class="form-control">
@@ -548,10 +559,10 @@
     <!-- ============ TAB 3: XEM TRƯỚC & GỬI ============ -->
     <section class="section" id="tab-preview">
         <div class="card">
-            <div class="card-title"><span class="material-icon">👁️</span> Kết quả xem trước</div>
+            <div class="card-title"><span class="material-icon">visibility</span> Kết quả xem trước</div>
             <div class="preview-box">
                 <canvas id="preview-canvas" width="212" height="104"></canvas>
-                <button id="btn-upload-eink" class="btn btn-filled btn-block" disabled>🚀 Cập Nhật E-ink</button>
+                <button id="btn-upload-eink" class="btn btn-filled btn-block" disabled><span class="msm">send</span> Cập Nhật E-ink</button>
                 <div class="progress-track"><div id="upload-progress" class="progress-bar"></div></div>
             </div>
             <div class="history-wrapper">
@@ -564,19 +575,19 @@
         </div>
 
         <div class="card">
-            <div class="card-title"><span class="material-icon">🖥️</span> Console</div>
+            <div class="card-title"><span class="material-icon">terminal</span> Console</div>
             <div class="console-box" id="status-console">Đã sẵn sàng...</div>
         </div>
 
         <div class="card">
-            <div class="card-title"><span class="material-icon">#️⃣</span> Mã Hex Thô</div>
+            <div class="card-title"><span class="material-icon">tag</span> Mã Hex Thô</div>
             <textarea id="hex-output" class="form-control" readonly style="height:110px; font-size:11px; font-family:monospace;"></textarea>
             <button id="btn-generate-hex" class="btn btn-tonal btn-block" style="margin-top:10px;">Tạo Mã Hex</button>
         </div>
     </section>
 
     <!-- FAB: upload nhanh (chuyển sang tab preview) -->
-    <button class="fab" id="fab-preview" aria-label="Xem trước và gửi">👁️</button>
+    <button class="fab" id="fab-preview" aria-label="Xem trước và gửi"><span class="msm" style="font-size:26px;">visibility</span></button>
 
     <!-- BOTTOM SHEET: help/kết nối -->
     <div class="sheet-backdrop" id="sheet-backdrop"></div>
@@ -587,7 +598,7 @@
             1. Vào tab <b>Thiết bị</b>, bấm <b>Kết Nối</b> để chọn mạch DA14585 hoặc ESP32-C3 qua Bluetooth.<br><br>
             2. Tab <b>Tạo ảnh</b>: nhập chữ, tải ảnh hoặc tạo QR, chỉnh dithering.<br><br>
             3. Tab <b>Xem trước</b>: bấm <b>Cập Nhật E-ink</b> để gửi lên màn hình.<br><br>
-            💡 Web Bluetooth cần Chrome/Edge, hoặc Bluefy trên iOS.
+            <span class="msm" style="vertical-align:-4px; font-size:18px;">lightbulb</span> Web Bluetooth cần Chrome/Edge, hoặc Bluefy trên iOS.
         </p>
         <div class="sheet-actions">
             <button class="btn btn-tonal btn-block" id="btn-sheet-close">Đóng</button>
@@ -597,19 +608,19 @@
     <!-- BOTTOM NAVIGATION -->
     <nav class="bottom-nav">
         <button class="nav-item active" data-tab="tab-devices" aria-label="Thiết bị">
-            <span class="nav-icon">📟</span> <span class="nav-label">Thiết bị</span>
+            <span class="nav-icon msm">devices</span> <span class="nav-label">Thiết bị</span>
         </button>
         <button class="nav-item" data-tab="tab-create" aria-label="Tạo ảnh">
-            <span class="nav-icon">🖌️</span> <span class="nav-label">Tạo ảnh</span>
+            <span class="nav-icon msm">brush</span> <span class="nav-label">Tạo ảnh</span>
         </button>
         <button class="nav-item" data-tab="tab-preview" aria-label="Xem trước">
-            <span class="nav-icon">👁️</span> <span class="nav-label">Xem trước</span>
+            <span class="nav-icon msm">visibility</span> <span class="nav-label">Xem trước</span>
         </button>
     </nav>
 
     <!-- Drag overlay -->
     <div id="drag-overlay" style="display:none; position:fixed; inset:0; background:rgba(103,80,164,0.15); backdrop-filter:blur(8px); z-index:999; justify-content:center; align-items:center; border:4px dashed var(--primary); color:var(--primary); font-size:1.4rem; font-weight:700; pointer-events:none;">
-        Thả Ảnh Vào Đây 📸
+        Thả Ảnh Vào Đây
     </div>
 
     <script>
@@ -622,8 +633,8 @@
             if (!container) return;
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            const icon = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
-            toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
+            const icon = type === 'success' ? 'check_circle' : type === 'error' ? 'error' : 'info';
+            toast.innerHTML = `<span class="toast-icon msm">${icon}</span><span>${msg}</span>`;
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.add('show'));
             setTimeout(() => {
@@ -676,9 +687,9 @@
                 body.classList.toggle('dark-mode');
                 const isDark = body.classList.contains('dark-mode');
                 localStorage.setItem('bmo-theme', isDark ? 'dark' : 'light');
-                themeBtn.textContent = isDark ? '☀️' : '🌓';
+                themeBtn.innerHTML = isDark ? '<span class="msm">light_mode</span>' : '<span class="msm">dark_mode</span>';
             };
-            themeBtn.textContent = body.classList.contains('dark-mode') ? '☀️' : '🌓';
+            themeBtn.innerHTML = body.classList.contains('dark-mode') ? '<span class="msm">light_mode</span>' : '<span class="msm">dark_mode</span>';
         }
 
         // ================= SLIDER =================
