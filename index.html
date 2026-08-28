@@ -135,10 +135,10 @@
             border-radius: 24px; /* full pill M3 */
             font-family: var(--font); font-size: 14px; font-weight: 500; letter-spacing: 0.1px;
             border: none; cursor: pointer; position: relative; overflow: hidden;
-            transition: box-shadow 0.2s, background-color 0.15s, transform 0.05s;
+            transition: box-shadow 0.2s, background-color 0.15s, transform 0.1s;
             user-select: none; text-transform: none;
         }
-        .btn:active { transform: scale(0.97); }
+        .btn:active { transform: scale(0.96); }
         .btn:disabled { opacity: 0.5; pointer-events: none; }
         .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .btn-block { width: 100%; }
@@ -148,15 +148,18 @@
             box-shadow: var(--elevation-1);
         }
         .btn-filled:active { box-shadow: var(--elevation-1); background: color-mix(in srgb, var(--primary) 85%, black); }
+        .btn-filled:hover:not(:disabled) { box-shadow: var(--shadow-md); }
         .btn-tonal {
             background: var(--secondary-container); color: var(--on-secondary-container);
         }
         .btn-tonal:active { background: color-mix(in srgb, var(--secondary-container) 80%, black); }
+        .btn-tonal:hover:not(:disabled) { box-shadow: var(--shadow); }
         .btn-outlined {
             background: transparent; color: var(--primary);
             border: 1px solid var(--outline);
         }
-        .btn-outlined:active { background: var(--primary-container); }
+        .btn-outlined:active { background: var(--primary-container); border-color: var(--primary); }
+        .btn-outlined:hover:not(:disabled) { border-color: var(--primary); }
         .btn-text {
             background: transparent; color: var(--primary); padding: 0 12px;
         }
@@ -180,7 +183,7 @@
         .card-subtitle { font-size: 13px; color: var(--on-surface-variant); margin-top: -8px; margin-bottom: 12px; }
 
         /* ============ FORM ============ */
-        .form-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
         .form-group label { font-size: 12px; font-weight: 500; color: var(--on-surface-variant); letter-spacing: 0.3px; }
         .form-control {
             width: 100%; height: 48px; padding: 0 16px;
@@ -275,7 +278,7 @@
         /* ============ BOTTOM NAV (M3) ============ */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-            display: flex; justify-content: space-around; align-items: stretch;
+            display: flex; justify-content: space-evenly; align-items: stretch;
             background: var(--surface-container);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -285,12 +288,13 @@
         }
         .nav-item {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 3px; border: none; background: transparent; color: var(--on-surface-variant);
+            gap: 4px; border: none; background: transparent; color: var(--on-surface-variant);
             font-family: var(--font); font-size: 12px; font-weight: 500; cursor: pointer;
             transition: color 0.2s; position: relative; z-index: 1;
+            padding: 6px 4px; min-width: 0;
         }
         .nav-item .nav-icon { font-size: 22px; line-height: 1; transition: transform 0.2s; position: relative; z-index: 2; }
-        .nav-item .nav-label { position: relative; z-index: 2; }
+        .nav-item .nav-label { position: relative; z-index: 2; white-space: nowrap; }
         .nav-item.active { color: var(--primary); }
         .nav-item.active .nav-icon { transform: translateY(-2px); }
         .nav-item.active::before {
@@ -448,12 +452,12 @@
         <div class="card">
             <div class="card-title"><span class="material-icon">usb</span> Mạch ESP32-C3 (Tùy biến)</div>
             <div class="conn-status"><span class="conn-dot" id="esp-dot"></span><span id="esp-status-text">Chưa kết nối</span></div>
-            <button id="btn-esp-connect" class="btn btn-filled btn-block" style="margin-bottom:10px;">Kết Nối ESP32-C3</button>
+            <button id="btn-esp-connect" class="btn btn-filled btn-block" style="margin-bottom:16px;">Kết Nối ESP32-C3</button>
             <div class="form-group">
                 <label for="esp-custom-code">Mã lệnh kèm theo (Prefix)</label>
                 <input type="text" id="esp-custom-code" class="form-control" placeholder="VD: SYNC_TIME:" value="SYNC_TIME:">
             </div>
-            <button id="btn-esp-sync" class="btn btn-tonal btn-block" disabled>Gửi Giờ</button>
+                            <button id="btn-esp-sync" class="btn btn-tonal btn-block" disabled style="margin-top:16px;">Gửi Giờ</button>
         </div>
     </section>
 
@@ -586,10 +590,7 @@
         </div>
     </section>
 
-    <!-- FAB: upload nhanh (chuyển sang tab preview) -->
-    <button class="fab" id="fab-preview" aria-label="Xem trước và gửi"><span class="msm" style="font-size:26px;">visibility</span></button>
-
-    <!-- BOTTOM SHEET: help/kết nối -->
+    <!-- BOTTOM SHEET: hướng dẫn -->
     <div class="sheet-backdrop" id="sheet-backdrop"></div>
     <div class="bottom-sheet" id="help-sheet">
         <div class="sheet-handle"></div>
@@ -823,9 +824,6 @@
             items.forEach(item => {
                 item.addEventListener('click', () => switchTab(item.dataset.tab));
             });
-            // FAB
-            const fab = document.getElementById('fab-preview');
-            if (fab) fab.addEventListener('click', () => switchTab('tab-preview'));
             // Bottom sheet
             const backdrop = document.getElementById('sheet-backdrop');
             const sheet = document.getElementById('help-sheet');
